@@ -1,19 +1,20 @@
 /* Minimal dwm-style status bar: workspace indicators, the focused window's
- * title, and a clock. Drawn with core Xlib text (XDrawString) — no Xft or
- * Pango, so non-Latin window titles (e.g. Cyrillic) won't render correctly
- * with the default core font; workspace numbers and the clock are ASCII and
- * always fine. */
+ * title, tray icons, and a clock. Drawn with core Xlib text (XDrawString)
+ * — no Xft or Pango, so non-Latin window titles (e.g. Cyrillic) won't
+ * render correctly with the default core font; workspace numbers and the
+ * clock are ASCII and always fine. Colors/font/height come from `cfg`
+ * (src/appconf.c), reloadable at runtime via bar_reload(). */
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
 #include "zovwm.h"
-#include "config.h"
 
 static Window barwin;
 static GC gc;
 static XFontStruct *font;
 static unsigned long col_bg, col_fg, col_cur, col_occupied, col_empty;
+static int clockareaw; /* reserved width for the clock text; tray icons end just left of it */
 
 static unsigned long
 getcolor(const char *name)
@@ -34,33 +35,54 @@ workspace_occupied(int idx)
 	return 0;
 }
 
-void
-bar_init(void)
+static void
+loadstyle(void)
 {
-	XSetWindowAttributes wa;
-
-	font = XLoadQueryFont(wm.dpy, barfont);
+	if (font)
+		XFreeFont(wm.dpy, font);
+	font = XLoadQueryFont(wm.dpy, cfg.bar_font);
 	if (!font)
 		font = XLoadQueryFont(wm.dpy, "fixed");
 	if (!font)
 		die("zovwm: cannot load a core X font for the bar");
 
-	col_bg       = getcolor(barcol_bg);
-	col_fg       = getcolor(barcol_fg);
-	col_cur      = getcolor(barcol_cur);
-	col_occupied = getcolor(barcol_occupied);
-	col_empty    = getcolor(barcol_empty);
+	col_bg       = getcolor(cfg.bar_color_bg);
+	col_fg       = getcolor(cfg.bar_color_fg);
+	col_cur      = getcolor(cfg.bar_color_cur);
+	col_occupied = getcolor(cfg.bar_color_occupied);
+	col_empty    = getcolor(cfg.bar_color_empty);
+
+	clockareaw = XTextWidth(font, "00:00:00", 8) + 16;
+}
+
+void
+bar_init(void)
+{
+	XSetWindowAttributes wa;
+
+	loadstyle();
 
 	wa.override_redirect = True;
 	wa.background_pixel = col_bg;
 	wa.event_mask = ExposureMask;
-	barwin = XCreateWindow(wm.dpy, wm.root, 0, 0, (unsigned int)wm.sw, BARHEIGHT, 0,
+	barwin = XCreateWindow(wm.dpy, wm.root, 0, 0, (unsigned int)wm.sw,
+	                         (unsigned int)cfg.bar_height, 0,
 	                         DefaultDepth(wm.dpy, wm.screen), CopyFromParent,
 	                         DefaultVisual(wm.dpy, wm.screen),
 	                         CWOverrideRedirect | CWBackPixel | CWEventMask, &wa);
 	gc = XCreateGC(wm.dpy, barwin, 0, NULL);
 	XSetFont(wm.dpy, gc, font->fid);
 	XMapRaised(wm.dpy, barwin);
+	bar_draw();
+}
+
+void
+bar_reload(void)
+{
+	loadstyle();
+	XSetFont(wm.dpy, gc, font->fid);
+	XSetWindowBackground(wm.dpy, barwin, col_bg);
+	XResizeWindow(wm.dpy, barwin, (unsigned int)wm.sw, (unsigned int)cfg.bar_height);
 	bar_draw();
 }
 
@@ -73,19 +95,31 @@ bar_cleanup(void)
 	XDestroyWindow(wm.dpy, barwin);
 }
 
+Window
+bar_window(void)
+{
+	return barwin;
+}
+
+int
+bar_right_reserved(void)
+{
+	return clockareaw;
+}
+
 void
 bar_draw(void)
 {
 	char label[8], clockbuf[16];
-	int x = 0, ty = (BARHEIGHT + font->ascent - font->descent) / 2;
+	int x = 0, ty = (cfg.bar_height + font->ascent - font->descent) / 2;
 	time_t t;
 	struct tm *tmv;
 
 	XSetForeground(wm.dpy, gc, col_bg);
-	XFillRectangle(wm.dpy, barwin, gc, 0, 0, (unsigned int)wm.sw, BARHEIGHT);
+	XFillRectangle(wm.dpy, barwin, gc, 0, 0, (unsigned int)wm.sw, (unsigned int)cfg.bar_height);
 
 	for (int i = 0; i < WSCOUNT; i++) {
-		int segw = BARHEIGHT;
+		int segw = cfg.bar_height;
 		unsigned long bg, fg;
 
 		if (i == wm.curws) {
@@ -100,7 +134,7 @@ bar_draw(void)
 		}
 
 		XSetForeground(wm.dpy, gc, bg);
-		XFillRectangle(wm.dpy, barwin, gc, x, 0, (unsigned int)segw, BARHEIGHT);
+		XFillRectangle(wm.dpy, barwin, gc, x, 0, (unsigned int)segw, (unsigned int)cfg.bar_height);
 		snprintf(label, sizeof label, "%d", i + 1);
 		XSetForeground(wm.dpy, gc, fg);
 		int lw = XTextWidth(font, label, (int)strlen(label));

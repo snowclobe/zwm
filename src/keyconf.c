@@ -58,6 +58,8 @@ static const ActionDef actions[] = {
 	{"layout_grid",      setlayout,      KIND_FIXED,     {.i = LAYOUT_GRID}},
 	{"kill",             killclient,     KIND_FIXED,     {0}},
 	{"quit",             quit,           KIND_FIXED,     {0}},
+	{"reload",           reloadconfig,   KIND_FIXED,     {0}},
+	{"power_menu",       powermenu_run,  KIND_FIXED,     {0}},
 	{"view",             view,           KIND_WORKSPACE, {0}},
 	{"tag",              tag,            KIND_WORKSPACE, {0}},
 };
@@ -93,6 +95,8 @@ static const struct {
 	{"Super+m",           "layout_monocle",  "",                   "Monocle layout"},
 	{"Super+g",           "layout_grid",     "",                   "Grid layout"},
 	{"Super+Shift+q",     "kill",            "",                   "Close focused window"},
+	{"Super+Shift+r",     "reload",          "",                   "Reload configuration"},
+	{"Super+Shift+p",     "power_menu",      "",                   "Power menu (reboot/shutdown/sleep/logout)"},
 	{"Super+Shift+e",     "quit",            "",                   "Quit zovwm"},
 };
 

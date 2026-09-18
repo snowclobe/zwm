@@ -9,7 +9,6 @@
 #include <X11/keysym.h>
 
 #include "zovwm.h"
-#include "config.h"
 
 #define ROWH 20
 #define MARGIN 16
@@ -151,16 +150,16 @@ wizard_run(void)
 	winheight = winh;
 	XSetWindowAttributes wa;
 
-	font = XLoadQueryFont(wm.dpy, barfont);
+	font = XLoadQueryFont(wm.dpy, cfg.bar_font);
 	if (!font)
 		font = XLoadQueryFont(wm.dpy, "fixed");
 	if (!font)
 		return; /* no core font at all: skip the wizard, keep compiled defaults */
 
-	col_bg = getcolor(barcol_bg);
-	col_fg = getcolor(barcol_fg);
-	col_cur = getcolor(barcol_cur);
-	col_hint = getcolor(barcol_occupied);
+	col_bg = getcolor(cfg.bar_color_bg);
+	col_fg = getcolor(cfg.bar_color_fg);
+	col_cur = getcolor(cfg.bar_color_cur);
+	col_hint = getcolor(cfg.bar_color_occupied);
 
 	int x = (wm.sw - WINW) / 2;
 	int y = (wm.sh - winh) / 2;

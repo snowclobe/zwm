@@ -21,10 +21,13 @@ unmapnotify(XEvent *e)
 {
 	/* We never XUnmapWindow() a managed client ourselves (hidden
 	 * workspaces are parked off-screen instead, see showhideworkspace),
-	 * so any UnmapNotify we see means the client is going away. */
+	 * so any UnmapNotify we see means the client (or a docked tray icon)
+	 * is going away. */
 	Client *c = wintoclient(e->xunmap.window);
 	if (c)
 		unmanage(c, 0);
+	else
+		tray_handle_unmap(e->xunmap.window);
 }
 
 static void
@@ -33,6 +36,8 @@ destroynotify(XEvent *e)
 	Client *c = wintoclient(e->xdestroywindow.window);
 	if (c)
 		unmanage(c, 1);
+	else
+		tray_handle_destroy(e->xdestroywindow.window);
 }
 
 static void
@@ -171,6 +176,9 @@ handleevent(XEvent *ev)
 		break;
 	case PropertyNotify:
 		propertynotify(ev);
+		break;
+	case ClientMessage:
+		tray_handle_clientmessage(ev);
 		break;
 	case Expose:
 		if (ev->xexpose.count == 0)

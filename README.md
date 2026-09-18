@@ -150,7 +150,32 @@ that file to see it again on the next login.
 The file itself is plain text, one bind per line
 (`Mod+Mod+Key action [arg]`, see `src/keyconf.c` for the full action list),
 so it's just as easy to hand-edit afterwards as it was to compile-edit
-`config.h` before.
+`config.h` before — and edits apply live (see Hot-reload below), so
+there's no need to reopen the wizard just to change a bind later.
+
+## Appearance config and hot-reload
+
+`~/.config/zovwm/zovwm.conf` — `key value` lines, same idea as
+`keys.conf` — covers everything that used to be compile-time in
+`config.h`: `gap`, `border_width`, `bar_height`, `bar_font`,
+`bar_color_bg`/`fg`/`cur`/`occupied`/`empty`, `color_focus`/
+`color_unfocus`, `master_ratio`, `master_count`, `default_layout`. It's
+written out with the current defaults on first run, same as `keys.conf`.
+`src/appconf.c` owns loading/parsing it into the global `cfg` (declared in
+`zovwm.h`), which every file that used to read `config.h`'s constants
+reads from instead.
+
+**Both** config files apply without restarting zovwm:
+- `Super+Shift+r` reloads on demand.
+- Saving either file from an editor applies it automatically, within
+  about a second — `main.c` watches `~/.config/zovwm/` with `inotify`
+  (`IN_CLOSE_WRITE`/`IN_MOVED_TO`, so both a plain write and the
+  write-to-temp-then-rename pattern most editors use are caught) and
+  calls the same reload path. This is Linux-specific; the hotkey works
+  everywhere zovwm runs, the automatic trigger doesn't build in on
+  non-Linux (it's `#ifdef __linux__`'d out, which only matters for the
+  macOS compile-test environment this was developed alongside — the
+  runtime target has only ever been Linux/Xorg).
 
 ## Keybindings (defaults)
 
@@ -178,12 +203,11 @@ above, or by editing `~/.config/zovwm/keys.conf` directly.
 | `Super`+drag LMB   | move a floating window (tiled ones auto-float)|
 | `Super`+drag RMB   | resize a floating window                      |
 | `Super+w`          | fetch and set a new random wallpaper          |
+| `Super+Shift+r`    | reload `keys.conf`/`zovwm.conf`               |
+| `Super+Shift+p`    | power menu (reboot/shutdown/sleep/logout)     |
 
 Mouse bindings (floating window move/resize) aren't wizard/config-file
 driven yet — they're still constants in `src/config.h` (`buttons[]`).
-Appearance (border colors, `GAP`, bar colors/font) is also still
-compile-time in `config.h`; a full appearance config file is a later
-milestone (see roadmap).
 
 ## Status bar
 
@@ -192,8 +216,41 @@ drawn with bare Xlib (`XDrawString` — no Xft/Pango, so non-Latin window
 titles, e.g. Cyrillic, may not render correctly with the default core font;
 workspace numbers and the clock are always fine). Shows: 9 workspace
 indicators (current one highlighted, occupied ones in a different color),
-the focused window's title, and a clock. Height, font, and colors are in
-`src/config.h` (`BARHEIGHT`, `barfont`, `barcol_*`).
+the layout indicator, the focused window's title, docked tray icons, and a
+clock. Height, font, and colors come from `cfg` (see Appearance config
+above) and reload live along with everything else in it.
+
+## System tray
+
+The bar hosts a standards-compliant `_NET_SYSTEM_TRAY` (XEmbed) tray —
+`src/tray.c` — so apps like a NetworkManager or volume applet can dock an
+icon into it, the same way they would with any other WM's tray. It reuses
+the bar's own window as the tray manager (no extra window), positions
+docked icons just left of the clock, and undocks cleanly when the owning
+app exits or unmaps its icon.
+
+Tested against a real tray client (`volumeicon-alsa`) end to end: it docks,
+renders, and cleanly disappears on quit. XEmbed itself is a real but fiddly
+protocol and even mature window managers don't work with every tray-icon
+app in the wild — this implements the spec correctly rather than
+special-casing individual apps' quirks. If another program already owns
+the tray selection (another WM/panel is already acting as the tray host),
+zovwm logs that and simply skips the feature rather than fighting over it.
+
+## Power menu
+
+`Super+Shift+p` opens a small graphical menu (`src/powermenu.c`, same
+bare-Xlib approach and `cfg` styling as the wizard) with four options:
+
+| Item     | Action                          |
+|----------|----------------------------------|
+| Reboot   | `systemctl reboot`               |
+| Shutdown | `systemctl poweroff`             |
+| Sleep    | `systemctl suspend`              |
+| Logout   | exits zovwm (ends the X session) |
+
+`Up`/`Down`/`j`/`k` to move, `Enter` to act, `Esc` to cancel. Logout is the
+default selection, since it's the least destructive of the four.
 
 ## Wallpaper manager
 
@@ -233,9 +290,10 @@ manually via `Super+w`.
 - `src/` — the C core: the X11 event loop (`main.c`, `events.c`), client
   and focus management (`client.c`), keybinding grabbing/dispatch
   (`keys.c`), layouts and switching between them (`layout.c`), the status
-  bar (`bar.c`), the runtime keybinding config — action registry,
-  defaults, `keys.conf` load/save (`keyconf.c`) — and the first-run wizard
-  (`wizard.c`).
+  bar (`bar.c`), the system tray (`tray.c`), the power menu
+  (`powermenu.c`), the runtime keybinding config — action registry,
+  defaults, `keys.conf` load/save (`keyconf.c`) — the runtime appearance
+  config (`appconf.c`), and the first-run wizard (`wizard.c`).
 - `rust/zovwm-layout/` — pure layout geometry (master-stack and grid;
   monocle is a trivial case computed directly in C), no X11, no side
   effects, built as a static library and called from `layout.c` over FFI
@@ -248,12 +306,12 @@ manually via `Super+w`.
 Done (MVP): tile/monocle/grid layouts (`Super+t/m/g`), focus (keyboard +
 hover), floating toggle, moving/resizing floating windows with the mouse,
 9 workspaces, launching apps (including rofi), a built-in status bar with
-a layout indicator, a wallpaper manager (`Super+w`), a runtime, remappable
-keybinding config with a first-run graphical wizard, single monitor.
+a layout indicator and a system tray, a wallpaper manager (`Super+w`), a
+power menu (`Super+Shift+p`), runtime keybinding and appearance config
+with a first-run graphical wizard and live hot-reload, single monitor.
 
 Next:
-- A full appearance config file (colors, gaps, bar font/height — currently
-  still compile-time `config.h`), and mouse-binding remapping.
+- Mouse-binding remapping (currently still compile-time `config.h`).
 - An IPC socket for external control (`i3-msg`-style).
 - An unbounded-canvas movement mode — an idea borrowed from driftwm:
   floating windows live on a large virtual canvas, and a hotkey switches

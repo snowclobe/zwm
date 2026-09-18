@@ -7,24 +7,13 @@
 #include <X11/keysym.h>
 #include "zovwm.h"
 
-/* --- appearance / layout --- */
-#define MODKEY        Mod4Mask /* Super */
-#define BORDERWIDTH   2
-#define GAP           8
-static const double default_mfact   = 0.55; /* master column width fraction */
-static const int    default_nmaster = 1;
-static const LayoutType default_layout = LAYOUT_TILE;
-static const char col_focus[]   = "#5e81ac";
-static const char col_unfocus[] = "#3b4252";
-
-/* --- status bar --- */
-#define BARHEIGHT 20
-static const char barfont[]         = "fixed"; /* core X font, always present */
-static const char barcol_bg[]       = "#2e3440";
-static const char barcol_fg[]       = "#d8dee9";
-static const char barcol_cur[]      = "#88c0d0"; /* current workspace */
-static const char barcol_occupied[] = "#a3be8c"; /* has clients, not current */
-static const char barcol_empty[]    = "#4c566a"; /* no clients */
+/* --- appearance / layout ---
+ * GAP, border width/colors, bar height/font/colors, and the default
+ * layout/master-ratio are no longer compile-time: see src/appconf.c for
+ * the defaults and ~/.config/zovwm/zovwm.conf for the loaded/persisted
+ * result (the global `cfg`, declared in zovwm.h). MODKEY and the mouse
+ * bindings below stay compile-time — remapping those wasn't asked for. */
+#define MODKEY Mod4Mask /* Super */
 
 /* Default terminal/launcher/rofi/wallpaper commands for keybindings now
  * live in src/keyconf.c's defaults table. The one unconditional startup

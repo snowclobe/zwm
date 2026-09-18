@@ -1,7 +1,15 @@
 /* Entry point: X11 setup, existing-window scan, and the main event loop. */
+#define _POSIX_C_SOURCE 200809L
+
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#ifdef __linux__
+#include <sys/inotify.h> /* Linux-only: auto-reload on config save. The
+                           * Super+Shift+r hotkey reload works everywhere;
+                           * only the automatic on-save trigger needs this. */
+#endif
 #include <sys/select.h>
 #include <time.h>
 #include <unistd.h>
@@ -11,6 +19,7 @@
 #include "config.h"
 
 WM wm;
+static int inotifyfd = -1;
 
 /* Fetches a random wallpaper from Wallhaven's open API and sets it (see
  * rust/zovwm-wallpaper). Spawned once, unconditionally, below in setup(). */
@@ -52,6 +61,25 @@ quit(const Arg *arg)
 	wm.running = 0;
 }
 
+/* Re-reads both config files and reapplies everything without restarting
+ * the WM: bound to "reload" (default Super+Shift+r) and fired
+ * automatically when main()'s event loop sees keys.conf/zovwm.conf
+ * change on disk (see the inotify handling below). */
+void
+reloadconfig(const Arg *arg)
+{
+	(void)arg;
+
+	keyconf_load();
+	keyconf_build_keys();
+	grabkeys();
+
+	appconf_reload();
+	refreshclients();
+	bar_reload();
+	arrange();
+}
+
 void
 scan(void)
 {
@@ -73,6 +101,26 @@ scan(void)
 }
 
 static void
+watchconfigdir(void)
+{
+#ifdef __linux__
+	const char *home = getenv("HOME");
+	char path[512];
+	snprintf(path, sizeof path, "%s/.config/zovwm", home ? home : "/tmp");
+
+	inotifyfd = inotify_init1(IN_NONBLOCK);
+	if (inotifyfd < 0)
+		return;
+	/* IN_CLOSE_WRITE covers a plain write; IN_MOVED_TO covers the
+	 * write-to-temp-then-rename pattern most editors actually use. */
+	if (inotify_add_watch(inotifyfd, path, IN_CLOSE_WRITE | IN_MOVED_TO) < 0) {
+		close(inotifyfd);
+		inotifyfd = -1;
+	}
+#endif
+}
+
+static void
 setup(void)
 {
 	wm.dpy = XOpenDisplay(NULL);
@@ -88,10 +136,12 @@ setup(void)
 	wm.curws = 0;
 	wm.running = 1;
 
+	appconf_load();
+
 	for (int i = 0; i < WSCOUNT; i++) {
-		wm.ws[i].master_ratio = default_mfact;
-		wm.ws[i].nmaster = default_nmaster;
-		wm.ws[i].layout = default_layout;
+		wm.ws[i].master_ratio = cfg.master_ratio;
+		wm.ws[i].nmaster = cfg.master_count;
+		wm.ws[i].layout = cfg.default_layout;
 	}
 
 	wm.wm_protocols = XInternAtom(wm.dpy, "WM_PROTOCOLS", False);
@@ -123,6 +173,8 @@ setup(void)
 
 	grabkeys();
 	bar_init();
+	tray_init();
+	watchconfigdir();
 	{
 		Arg wp = {.v = wallpapercmd};
 		spawn(&wp);
@@ -133,12 +185,35 @@ setup(void)
 static void
 cleanup(void)
 {
+	if (inotifyfd >= 0)
+		close(inotifyfd);
+	tray_cleanup();
 	bar_cleanup();
 	XUngrabKey(wm.dpy, AnyKey, AnyModifier, wm.root);
 	XFreeCursor(wm.dpy, wm.cursor_normal);
 	XSync(wm.dpy, False);
 	XCloseDisplay(wm.dpy);
 }
+
+#ifdef __linux__
+static void
+handleconfigchange(void)
+{
+	_Alignas(struct inotify_event) char buf[4096];
+	ssize_t len;
+
+	while ((len = read(inotifyfd, buf, sizeof buf)) > 0) {
+		ssize_t off = 0;
+		while (off < len) {
+			struct inotify_event *ie = (struct inotify_event *)(buf + off);
+			if (ie->len > 0 &&
+			    (strcmp(ie->name, "keys.conf") == 0 || strcmp(ie->name, "zovwm.conf") == 0))
+				reloadconfig(NULL);
+			off += (ssize_t)(sizeof(struct inotify_event) + ie->len);
+		}
+	}
+}
+#endif
 
 int
 main(void)
@@ -160,9 +235,20 @@ main(void)
 
 		fd_set fds;
 		struct timeval tv = {.tv_sec = 1, .tv_usec = 0};
+		int maxfd = xfd;
 		FD_ZERO(&fds);
 		FD_SET(xfd, &fds);
-		select(xfd + 1, &fds, NULL, NULL, &tv);
+		if (inotifyfd >= 0) {
+			FD_SET(inotifyfd, &fds);
+			if (inotifyfd > maxfd)
+				maxfd = inotifyfd;
+		}
+		select(maxfd + 1, &fds, NULL, NULL, &tv);
+
+#ifdef __linux__
+		if (inotifyfd >= 0 && FD_ISSET(inotifyfd, &fds))
+			handleconfigchange();
+#endif
 
 		time_t now = time(NULL);
 		if (now != lastclock) {

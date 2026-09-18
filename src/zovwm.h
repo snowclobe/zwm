@@ -65,6 +65,27 @@ typedef struct {
 	LayoutType layout;
 } WsState;
 
+/* Runtime appearance config, loaded from ~/.config/zovwm/zovwm.conf (see
+ * appconf.c) with these as the hardcoded fallback/seed values. */
+typedef struct {
+	int gap;
+	int border_width;
+	int bar_height;
+	int master_count;
+	double master_ratio;
+	LayoutType default_layout;
+	char color_focus[16];
+	char color_unfocus[16];
+	char bar_font[64];
+	char bar_color_bg[16];
+	char bar_color_fg[16];
+	char bar_color_cur[16];
+	char bar_color_occupied[16];
+	char bar_color_empty[16];
+} AppConfig;
+
+extern AppConfig cfg;
+
 typedef struct {
 	Display *dpy;
 	int screen;
@@ -100,6 +121,7 @@ void view(const Arg *arg);
 void tag(const Arg *arg);
 void movemouse(const Arg *arg);
 void resizemouse(const Arg *arg);
+void refreshclients(void); /* reapplies cfg.border_width/color_* to every client, for hot-reload */
 
 /* layout.c */
 void arrange(void);
@@ -108,7 +130,10 @@ void setlayout(const Arg *arg);
 /* bar.c */
 void bar_init(void);
 void bar_draw(void);
+void bar_reload(void); /* re-reads cfg (font/colors/height) without recreating barwin */
 void bar_cleanup(void);
+Window bar_window(void); /* barwin, for tray.c to reparent icons into */
+int bar_right_reserved(void); /* width reserved for the clock, tray icons end here */
 
 /* events.c */
 void handleevent(XEvent *ev);
@@ -132,10 +157,26 @@ void keyconf_set_combo(int i, const char *combo);
 /* wizard.c */
 void wizard_run(void);
 
+/* appconf.c */
+void appconf_load(void);   /* seeds cfg with defaults, then overrides from zovwm.conf; writes the file if missing */
+void appconf_reload(void); /* re-reads zovwm.conf into cfg, for hot-reload; does not rewrite the file */
+
+/* tray.c */
+void tray_init(void);
+void tray_cleanup(void);
+void tray_handle_clientmessage(XEvent *ev);
+void tray_handle_unmap(Window w);
+void tray_handle_destroy(Window w);
+int tray_width(void);
+
+/* powermenu.c */
+void powermenu_run(const Arg *arg);
+
 /* main.c */
 void spawn(const Arg *arg);
 void quit(const Arg *arg);
 void scan(void);
 void die(const char *msg);
+void reloadconfig(const Arg *arg);
 
 #endif /* ZOVWM_H */

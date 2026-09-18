@@ -104,7 +104,7 @@ manage(Window w)
 
 	c->win = w;
 	c->workspace = wm.curws;
-	c->bw = BORDERWIDTH;
+	c->bw = cfg.border_width;
 	c->x = wa.x;
 	c->y = wa.y;
 	c->w = wa.width;
@@ -114,7 +114,7 @@ manage(Window w)
 		c->floating = 1;
 
 	XSetWindowBorderWidth(wm.dpy, w, c->bw);
-	XSetWindowBorder(wm.dpy, w, getcolor(col_unfocus));
+	XSetWindowBorder(wm.dpy, w, getcolor(cfg.color_unfocus));
 	XSelectInput(wm.dpy, w, EnterWindowMask | FocusChangeMask |
 	                         PropertyChangeMask | StructureNotifyMask);
 
@@ -184,7 +184,7 @@ unfocus(Client *c, int setfocus)
 {
 	if (!c)
 		return;
-	XSetWindowBorder(wm.dpy, c->win, getcolor(col_unfocus));
+	XSetWindowBorder(wm.dpy, c->win, getcolor(cfg.color_unfocus));
 	if (setfocus)
 		XSetInputFocus(wm.dpy, wm.root, RevertToPointerRoot, CurrentTime);
 }
@@ -204,7 +204,7 @@ focus(Client *c)
 	if (wm.focused && wm.focused != c)
 		unfocus(wm.focused, 0);
 	if (c) {
-		XSetWindowBorder(wm.dpy, c->win, getcolor(col_focus));
+		XSetWindowBorder(wm.dpy, c->win, getcolor(cfg.color_focus));
 		XSetInputFocus(wm.dpy, c->win, RevertToPointerRoot, CurrentTime);
 		if (c->floating)
 			XRaiseWindow(wm.dpy, c->win);
@@ -332,6 +332,17 @@ tag(const Arg *arg)
 	arrange();
 	showhideworkspace();
 	focus(NULL);
+}
+
+void
+refreshclients(void)
+{
+	for (Client *c = wm.clients; c; c = c->next) {
+		c->bw = cfg.border_width;
+		XSetWindowBorderWidth(wm.dpy, c->win, (unsigned int)c->bw);
+		XSetWindowBorder(wm.dpy, c->win,
+		                   getcolor(c == wm.focused ? cfg.color_focus : cfg.color_unfocus));
+	}
 }
 
 void
