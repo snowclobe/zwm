@@ -61,10 +61,15 @@ quit(const Arg *arg)
 	wm.running = 0;
 }
 
-/* Re-reads both config files and reapplies everything without restarting
- * the WM: bound to "reload" (default Super+Shift+r) and fired
- * automatically when main()'s event loop sees keys.conf/zovwm.conf
- * change on disk (see the inotify handling below). */
+/* Re-reads all three config files and reapplies everything without
+ * restarting the WM: bound to "reload" (default Super+Shift+r) and fired
+ * automatically when main()'s event loop sees keys.conf/zovwm.conf/
+ * monitor.conf change on disk (see the inotify handling below).
+ * Note: if monitor.conf now names a different mode, xrandr is re-run but
+ * wm.sw/wm.sh stay at whatever they were read as on startup (see setup())
+ * — Xlib only refreshes its cached screen size on reconnect. Editing
+ * monitor.conf by hand mid-session still needs a WM restart to retile to
+ * the new size; the wizard-driven first-run path handles this itself. */
 void
 reloadconfig(const Arg *arg)
 {
@@ -75,6 +80,7 @@ reloadconfig(const Arg *arg)
 	grabkeys();
 
 	appconf_reload();
+	monitorconf_apply();
 	refreshclients();
 	bar_reload();
 	arrange();
@@ -123,6 +129,14 @@ watchconfigdir(void)
 static void
 setup(void)
 {
+	/* Re-assert any saved monitor mode before we even connect: xrandr(1)
+	 * talks to the X server over $DISPLAY on its own, and doing this first
+	 * means the screen size Xlib caches at connect time (DisplayWidth/
+	 * DisplayHeight below) is already correct. Returns -1 on a first run
+	 * (no monitor.conf yet) — remembered so the setup wizard can run once
+	 * we have a display to draw on. */
+	int monitor_firstrun = monitorconf_apply() != 0;
+
 	wm.dpy = XOpenDisplay(NULL);
 	if (!wm.dpy)
 		die("zovwm: cannot open display");
@@ -137,6 +151,20 @@ setup(void)
 	wm.running = 1;
 
 	appconf_load();
+
+	if (monitor_firstrun && monitorwizard_run()) {
+		/* The mode changed: reopen so DisplayWidth/DisplayHeight (cached
+		 * by Xlib at connect time) reflect the new geometry. Nothing else
+		 * has been created on the display yet, so this is safe here. */
+		XCloseDisplay(wm.dpy);
+		wm.dpy = XOpenDisplay(NULL);
+		if (!wm.dpy)
+			die("zovwm: cannot open display");
+		wm.screen = DefaultScreen(wm.dpy);
+		wm.root = RootWindow(wm.dpy, wm.screen);
+		wm.sw = DisplayWidth(wm.dpy, wm.screen);
+		wm.sh = DisplayHeight(wm.dpy, wm.screen);
+	}
 
 	for (int i = 0; i < WSCOUNT; i++) {
 		wm.ws[i].master_ratio = cfg.master_ratio;
@@ -207,7 +235,8 @@ handleconfigchange(void)
 		while (off < len) {
 			struct inotify_event *ie = (struct inotify_event *)(buf + off);
 			if (ie->len > 0 &&
-			    (strcmp(ie->name, "keys.conf") == 0 || strcmp(ie->name, "zovwm.conf") == 0))
+			    (strcmp(ie->name, "keys.conf") == 0 || strcmp(ie->name, "zovwm.conf") == 0 ||
+			     strcmp(ie->name, "monitor.conf") == 0))
 				reloadconfig(NULL);
 			off += (ssize_t)(sizeof(struct inotify_event) + ie->len);
 		}

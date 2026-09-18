@@ -11,29 +11,32 @@ keybindings.
 
 ### 1. Dependencies
 
-- Xlib (headers and library).
+- Xlib and Xrandr (headers and libraries).
 - `pkg-config`.
 - A C11-capable compiler (gcc/clang).
 - Rust toolchain (`rustc`/`cargo`).
+- The `xrandr` command-line tool at runtime (used by the monitor setup
+  wizard and every later startup to apply your saved display mode — see
+  [Monitor setup wizard](#monitor-setup-wizard)).
 
 ```bash
 # Debian/Ubuntu
-sudo apt install build-essential libx11-dev pkg-config
+sudo apt install build-essential libx11-dev libxrandr-dev pkg-config x11-xserver-utils
 ```
 
 ```bash
 # Arch
-sudo pacman -S base-devel libx11 pkgconf
+sudo pacman -S base-devel libx11 libxrandr pkgconf xorg-xrandr
 ```
 
 ```bash
 # Fedora
-sudo dnf install gcc make pkgconf-pkg-config libX11-devel
+sudo dnf install gcc make pkgconf-pkg-config libX11-devel libXrandr-devel xrandr
 ```
 
 ```bash
 # openSUSE
-sudo zypper install gcc make pkgconf-pkg-config libX11-devel
+sudo zypper install gcc make pkgconf-pkg-config libX11-devel libXrandr-devel xrandr
 ```
 
 If you don't have `cargo`/`rustc` yet:
@@ -142,6 +145,33 @@ usual session.
 > (via Homebrew's `libx11`), but an actual interactive WM run needs to be
 > tested on Linux with an Xorg session (or via XQuartz+Xephyr).
 
+## Dotfiles
+
+`dotfiles/` has a ready-made `.xinitrc`/`.Xresources` pair plus an
+auto-`startx` login snippet, for the `startx`-from-a-text-console setup
+above:
+
+```bash
+sh dotfiles/install.sh
+```
+
+This installs:
+- `~/.xinitrc` — merges `~/.Xresources` with `xrdb`, then `exec zovwm`.
+  Nothing else is needed: zovwm fetches its own wallpaper and applies its
+  own saved monitor mode on startup.
+- `~/.Xresources` — a small dark color scheme and font for `xterm` and
+  other resource-aware apps (`Xcursor.theme`/`Xcursor.size` too).
+- A snippet appended to `~/.bash_profile` that runs `startx` automatically
+  on login from the first virtual terminal (`tty1`), so you land straight
+  in zovwm from a text-console login instead of typing `startx` by hand
+  every time.
+
+Any file the installer would overwrite is backed up first (`<file>.bak`),
+and it's safe to re-run — it won't duplicate the `.bash_profile` snippet
+on a second pass. It's meant as a starting point, not a requirement: edit
+anything under `dotfiles/` before installing, or skip it entirely and
+manage `~/.xinitrc` yourself as shown above.
+
 ## First-run setup wizard
 
 Keybindings are no longer compile-time only. The first time `zovwm` runs
@@ -160,6 +190,37 @@ so it's just as easy to hand-edit afterwards as it was to compile-edit
 `config.h` before — and edits apply live (see Hot-reload below), so
 there's no need to reopen the wizard just to change a bind later.
 
+## Monitor setup wizard
+
+Runs right before the keybinding wizard, the very first time zovwm starts
+with no `~/.config/zovwm/monitor.conf` yet (same bare-Xlib list-menu style
+as the keybinding wizard — see `src/monitorwizard.c`). For every connected
+output it queries RandR for the resolution/refresh-rate modes that output
+actually supports, lists them widest and highest-Hz first (e.g.
+`1920x1080 @ 144Hz`), and lets you pick one:
+
+- `Up`/`Down` or `j`/`k` selects a row.
+- `Enter` applies that mode immediately (via `xrandr`, so you see the
+  change before committing to it) and moves on to the next display.
+- `Esc` skips the current display, leaving its mode untouched.
+
+Once every connected output has been handled (or skipped), your picks are
+written to `monitor.conf` as plain `output mode rate` lines, e.g.:
+
+```
+eDP-1 1920x1080 60
+HDMI-1 2560x1440 144
+```
+
+From then on `monitorconf_apply()` re-runs the equivalent `xrandr` command
+for each saved line on every startup — before zovwm even opens its own X
+connection, so the screen is already at the right resolution and refresh
+rate by the time tiling starts — and again on hot-reload (`Super+Shift+r`
+or saving `monitor.conf` by hand). Delete `monitor.conf` to see the wizard
+again on the next login. If RandR isn't available, or an output reports no
+modes (as can happen under a plain Xvfb test display), the wizard silently
+does nothing rather than blocking startup.
+
 ## Appearance config and hot-reload
 
 `~/.config/zovwm/zovwm.conf` — `key value` lines, same idea as
@@ -172,9 +233,10 @@ written out with the current defaults on first run, same as `keys.conf`.
 `zovwm.h`), which every file that used to read `config.h`'s constants
 reads from instead.
 
-**Both** config files apply without restarting zovwm:
+**All three** config files (including `monitor.conf`, see above) apply
+without restarting zovwm:
 - `Super+Shift+r` reloads on demand.
-- Saving either file from an editor applies it automatically, within
+- Saving any of them from an editor applies it automatically, within
   about a second — `main.c` watches `~/.config/zovwm/` with `inotify`
   (`IN_CLOSE_WRITE`/`IN_MOVED_TO`, so both a plain write and the
   write-to-temp-then-rename pattern most editors use are caught) and
@@ -183,6 +245,12 @@ reads from instead.
   non-Linux (it's `#ifdef __linux__`'d out, which only matters for the
   macOS compile-test environment this was developed alongside — the
   runtime target has only ever been Linux/Xorg).
+
+> `monitor.conf` is the one exception worth calling out: reloading it
+> re-runs `xrandr`, but Xlib only refreshes the screen size it hands zovwm
+> at connection time — so hand-editing `monitor.conf` to a different mode
+> mid-session still needs a WM restart to retile correctly. The wizard's
+> own first-run path handles this itself by reopening the display.
 
 ## Keybindings (defaults)
 
@@ -321,13 +389,17 @@ manually via `Super+w`.
   bar (`bar.c`), the system tray (`tray.c`), the power menu
   (`powermenu.c`), the runtime keybinding config — action registry,
   defaults, `keys.conf` load/save (`keyconf.c`) — the runtime appearance
-  config (`appconf.c`), and the first-run wizard (`wizard.c`).
-- `rust/zovwm-layout/` — pure layout geometry (master-stack and grid;
-  monocle is a trivial case computed directly in C), no X11, no side
+  config (`appconf.c`), the runtime monitor config (`monitorconf.c`) and
+  its first-run wizard (`monitorwizard.c`), and the keybinding first-run
+  wizard (`wizard.c`).
+- `rust/zovwm-layout/` — pure layout geometry (bstack and grid; fullscreen
+  and monocle are trivial cases computed directly in C), no X11, no side
   effects, built as a static library and called from `layout.c` over FFI
   (`src/zov_layout.h`).
 - `rust/zovwm-wallpaper/` — a separate executable Rust crate (not FFI),
   the wallpaper manager — see the section above.
+- `dotfiles/` — an optional `.xinitrc`/`.Xresources`/auto-`startx` install
+  script, see [Dotfiles](#dotfiles) above.
 
 ## Roadmap
 
@@ -337,8 +409,10 @@ the mouse, directional window swap and keyboard-driven cursor movement
 (`Super+Shift+arrows` / `Super+arrows`), 9 workspaces, launching apps
 (including rofi), a built-in status bar with a layout indicator and a
 system tray, a wallpaper manager (`Super+w`), a power menu
-(`Super+Shift+p`), runtime keybinding and appearance config with a
-first-run graphical wizard and live hot-reload, single monitor.
+(`Super+Shift+p`), runtime keybinding/appearance/monitor config with
+first-run graphical wizards and live hot-reload (including per-output
+resolution and refresh-rate selection via RandR), an optional dotfiles
+installer.
 
 Next:
 - Mouse-binding remapping (currently still compile-time `config.h`).
@@ -346,4 +420,8 @@ Next:
 - An unbounded-canvas movement mode — an idea borrowed from driftwm:
   floating windows live on a large virtual canvas, and a hotkey switches
   into panning that canvas instead of fixed workspaces.
-- Multi-monitor support via RandR.
+- Genuine multi-monitor tiling: RandR is currently only used to set each
+  output's mode (resolution/refresh rate, see Monitor setup wizard above)
+  — the WM still tiles across the single combined screen area
+  (`wm.sw`/`wm.sh`), not per-output. Giving each output its own
+  independent set of workspaces/tiling is still open.

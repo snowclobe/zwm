@@ -160,6 +160,13 @@ void keyconf_set_combo(int i, const char *combo);
 /* wizard.c */
 void wizard_run(void);
 
+/* monitorconf.c */
+int monitorconf_apply(void); /* 0 = found & applied ~/.config/zovwm/monitor.conf, -1 = no file yet (first run) */
+void monitorconf_set(const char *output, const char *mode, const char *rate); /* shells out to xrandr(1) */
+
+/* monitorwizard.c */
+int monitorwizard_run(void); /* returns 1 if any output's mode changed (caller should reopen the display) */
+
 /* appconf.c */
 void appconf_load(void);   /* seeds cfg with defaults, then overrides from zovwm.conf; writes the file if missing */
 void appconf_reload(void); /* re-reads zovwm.conf into cfg, for hot-reload; does not rewrite the file */

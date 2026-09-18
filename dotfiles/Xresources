@@ -1,0 +1,32 @@
+! ~/.Xresources — picked up by dotfiles/xinitrc via `xrdb -merge`.
+! Reasonable defaults for the apps zovwm's own default binds launch
+! (xterm, rofi via Xresources-aware themes) and anything else you spawn.
+
+xterm*faceName: monospace
+xterm*faceSize: 11
+xterm*background: #1d1f21
+xterm*foreground: #c5c8c6
+xterm*cursorColor: #81a2be
+xterm*metaSendsEscape: true
+xterm*scrollBar: false
+
+Xcursor.theme: Adwaita
+Xcursor.size: 24
+
+! xterm's default 8-color palette redone as a readable dark theme.
+*color0:  #1d1f21
+*color1:  #cc6666
+*color2:  #b5bd68
+*color3:  #f0c674
+*color4:  #81a2be
+*color5:  #b294bb
+*color6:  #8abeb7
+*color7:  #c5c8c6
+*color8:  #969896
+*color9:  #cc6666
+*color10: #b5bd68
+*color11: #f0c674
+*color12: #81a2be
+*color13: #b294bb
+*color14: #8abeb7
+*color15: #ffffff

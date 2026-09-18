@@ -1,0 +1,10 @@
+#!/bin/sh
+# ~/.xinitrc — starts zovwm. Installed by dotfiles/install.sh.
+#
+# zovwm fetches its own wallpaper (zovwm-wallpaper) and re-applies your
+# saved display mode (monitor.conf) on its own during startup, so this
+# file doesn't need to do anything else.
+
+[ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources"
+
+exec zovwm
