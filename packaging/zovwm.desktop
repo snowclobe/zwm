@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=zovwm
+Comment=Minimal C/Rust tiling window manager for X11
+Exec=/usr/local/bin/zovwm
+TryExec=/usr/local/bin/zovwm
+Type=Application

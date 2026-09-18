@@ -1,0 +1,11 @@
+[package]
+name = "zovwm-wallpaper"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "zovwm-wallpaper"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
