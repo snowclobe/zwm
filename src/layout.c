@@ -6,6 +6,22 @@
 
 #define MAXTILED 256
 
+/* Raises wm.focused above its siblings (and, since it's a real XRaiseWindow
+ * on the shared root stacking order, above the override-redirect bar too —
+ * used by both LAYOUT_MONOCLE and LAYOUT_FULLSCREEN, which stack every
+ * tiled client on top of each other and need the focused one visible). */
+static void
+raisefocused(Client **tiled, unsigned int n)
+{
+	if (!wm.focused)
+		return;
+	for (unsigned int i = 0; i < n; i++)
+		if (tiled[i] == wm.focused) {
+			XRaiseWindow(wm.dpy, wm.focused->win);
+			return;
+		}
+}
+
 void
 arrange(void)
 {
@@ -22,15 +38,18 @@ arrange(void)
 		return;
 
 	switch (wm.ws[wm.curws].layout) {
+	case LAYOUT_FULLSCREEN:
+		/* True fullscreen: covers the whole screen, including over
+		 * the bar (no gap, doesn't stop at cfg.bar_height). */
+		for (unsigned int i = 0; i < n; i++)
+			resizeclient(tiled[i], 0, 0, wm.sw, wm.sh);
+		raisefocused(tiled, n);
+		break;
+
 	case LAYOUT_MONOCLE:
 		for (unsigned int i = 0; i < n; i++)
 			resizeclient(tiled[i], cfg.gap, sy + cfg.gap, wm.sw - 2 * cfg.gap, sh - 2 * cfg.gap);
-		if (wm.focused)
-			for (unsigned int i = 0; i < n; i++)
-				if (tiled[i] == wm.focused) {
-					XRaiseWindow(wm.dpy, wm.focused->win);
-					break;
-				}
+		raisefocused(tiled, n);
 		break;
 
 	case LAYOUT_GRID: {
@@ -40,9 +59,9 @@ arrange(void)
 		break;
 	}
 
-	case LAYOUT_TILE:
+	case LAYOUT_BSTACK:
 	default: {
-		unsigned int written = zov_layout_master_stack(
+		unsigned int written = zov_layout_bstack(
 		    n, 0, sy, wm.sw, sh, cfg.gap,
 		    (float)wm.ws[wm.curws].master_ratio,
 		    (unsigned int)wm.ws[wm.curws].nmaster,

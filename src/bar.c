@@ -145,7 +145,8 @@ bar_draw(void)
 
 	{
 		static const char *symbols[LAYOUT_COUNT] = {
-			[LAYOUT_TILE] = "[]=", [LAYOUT_MONOCLE] = "[M]", [LAYOUT_GRID] = "###",
+			[LAYOUT_FULLSCREEN] = "[F]", [LAYOUT_MONOCLE] = "[M]",
+			[LAYOUT_BSTACK] = "[B]", [LAYOUT_GRID] = "###",
 		};
 		const char *sym = symbols[wm.ws[wm.curws].layout];
 		XSetForeground(wm.dpy, gc, col_fg);

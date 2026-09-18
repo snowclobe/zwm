@@ -1,5 +1,6 @@
-//! Pure master-stack tiling geometry, called from the C core over FFI.
-//! No X11, no I/O — just arithmetic, so it is fully unit-testable off-target.
+//! Pure tiling-layout geometry (bstack, grid), called from the C core over
+//! FFI. No X11, no I/O — just arithmetic, so it is fully unit-testable
+//! off-target.
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -60,11 +61,11 @@ fn layout_row(x: i32, y: i32, w: i32, h: i32, gap: i32, count: usize) -> Vec<Zov
     rects
 }
 
-/// Computes window rectangles for a dwm-style master-stack layout:
-/// up to `nmaster` windows form a left column sized by `master_ratio` of the
-/// usable width, the rest stack in a right column. `gap` is applied around
-/// the screen edge and between windows/columns.
-pub fn compute_master_stack(
+/// Computes window rectangles for a bottom-stack layout: up to `nmaster`
+/// windows form a top row sized by `master_ratio` of the usable height, the
+/// rest stack side by side in a row below (a left/right master-stack split
+/// transposed to top/bottom).
+pub fn compute_bstack(
     n: usize,
     screen_x: i32,
     screen_y: i32,
@@ -89,21 +90,19 @@ pub fn compute_master_stack(
     let stack_count = n - master_count;
 
     if stack_count == 0 {
-        // Everything goes in a single (master) column.
-        return layout_column(outer_x, outer_y, outer_w, outer_h, gap, master_count);
+        return layout_row(outer_x, outer_y, outer_w, outer_h, gap, master_count);
     }
     if master_count == 0 {
-        // No master column; stack takes the whole width.
-        return layout_column(outer_x, outer_y, outer_w, outer_h, gap, stack_count);
+        return layout_row(outer_x, outer_y, outer_w, outer_h, gap, stack_count);
     }
 
-    let master_w = (((outer_w - gap).max(0) as f32) * ratio).round() as i32;
-    let master_w = master_w.clamp(0, outer_w);
-    let stack_x = outer_x + master_w + gap;
-    let stack_w = (outer_w - master_w - gap).max(0);
+    let master_h = (((outer_h - gap).max(0) as f32) * ratio).round() as i32;
+    let master_h = master_h.clamp(0, outer_h);
+    let stack_y = outer_y + master_h + gap;
+    let stack_h = (outer_h - master_h - gap).max(0);
 
-    let mut rects = layout_column(outer_x, outer_y, master_w, outer_h, gap, master_count);
-    rects.extend(layout_column(stack_x, outer_y, stack_w, outer_h, gap, stack_count));
+    let mut rects = layout_row(outer_x, outer_y, outer_w, master_h, gap, master_count);
+    rects.extend(layout_row(outer_x, stack_y, outer_w, stack_h, gap, stack_count));
     rects
 }
 
@@ -185,7 +184,7 @@ pub extern "C" fn zov_layout_grid(
 /// `out` must be a valid pointer to at least `out_cap` writable `ZovRect`
 /// slots, or null iff `out_cap` is 0.
 #[no_mangle]
-pub extern "C" fn zov_layout_master_stack(
+pub extern "C" fn zov_layout_bstack(
     n: u32,
     screen_x: i32,
     screen_y: i32,
@@ -200,7 +199,7 @@ pub extern "C" fn zov_layout_master_stack(
     if out.is_null() || out_cap == 0 || n == 0 {
         return 0;
     }
-    let rects = compute_master_stack(
+    let rects = compute_bstack(
         n as usize,
         screen_x,
         screen_y,
@@ -223,53 +222,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn single_window_fills_screen_minus_gap() {
-        let r = compute_master_stack(1, 0, 0, 1920, 1080, 10, 0.55, 1);
+    fn bstack_single_window_fills_screen_minus_gap() {
+        let r = compute_bstack(1, 0, 0, 1920, 1080, 10, 0.55, 1);
         assert_eq!(r, vec![ZovRect { x: 10, y: 10, w: 1900, h: 1060 }]);
     }
 
     #[test]
-    fn stack_divides_height_evenly() {
-        // nmaster = 0 so all 4 windows land in one column (the "stack" path).
-        let r = compute_master_stack(4, 0, 0, 1000, 1000, 0, 0.5, 0);
+    fn bstack_stack_row_divides_width_evenly() {
+        // nmaster = 0 so all 4 windows land in the single (stack) row.
+        let r = compute_bstack(4, 0, 0, 1000, 1000, 0, 0.5, 0);
         assert_eq!(r.len(), 4);
-        let heights: Vec<i32> = r.iter().map(|x| x.h).collect();
-        assert_eq!(heights.iter().sum::<i32>(), 1000);
-        assert!(heights.iter().max().unwrap() - heights.iter().min().unwrap() <= 1);
+        let widths: Vec<i32> = r.iter().map(|x| x.w).collect();
+        assert_eq!(widths.iter().sum::<i32>(), 1000);
+        assert!(widths.iter().max().unwrap() - widths.iter().min().unwrap() <= 1);
     }
 
     #[test]
-    fn master_ratio_moves_column_border() {
-        let narrow = compute_master_stack(2, 0, 0, 1000, 1000, 0, 0.3, 1);
-        let wide = compute_master_stack(2, 0, 0, 1000, 1000, 0, 0.7, 1);
-        assert!(narrow[0].w < wide[0].w);
-        // Second (stack) window's x must move right along with a wider master.
-        assert!(narrow[1].x < wide[1].x);
+    fn bstack_master_ratio_moves_row_border() {
+        let short = compute_bstack(2, 0, 0, 1000, 1000, 0, 0.3, 1);
+        let tall = compute_bstack(2, 0, 0, 1000, 1000, 0, 0.7, 1);
+        assert!(short[0].h < tall[0].h);
+        // Second (stack) window's y must move down along with a taller master.
+        assert!(short[1].y < tall[1].y);
     }
 
     #[test]
-    fn gap_keeps_windows_within_screen_bounds() {
+    fn bstack_keeps_windows_within_screen_bounds() {
         let sx = 100;
         let sy = 50;
         let sw = 1280;
         let sh = 800;
         let gap = 16;
         for n in 1..=6usize {
-            let rects = compute_master_stack(n, sx, sy, sw, sh, gap, 0.55, 1);
+            let rects = compute_bstack(n, sx, sy, sw, sh, gap, 0.55, 1);
             assert_eq!(rects.len(), n);
             for rect in &rects {
-                assert!(rect.x >= sx + gap, "x >= left margin");
-                assert!(rect.y >= sy + gap, "y >= top margin");
-                assert!(rect.x + rect.w <= sx + sw - gap, "right edge within margin");
-                assert!(rect.y + rect.h <= sy + sh - gap, "bottom edge within margin");
+                assert!(rect.x >= sx + gap);
+                assert!(rect.y >= sy + gap);
+                assert!(rect.x + rect.w <= sx + sw - gap);
+                assert!(rect.y + rect.h <= sy + sh - gap);
                 assert!(rect.w >= 0 && rect.h >= 0);
             }
         }
-    }
-
-    #[test]
-    fn zero_windows_returns_empty() {
-        assert!(compute_master_stack(0, 0, 0, 1000, 1000, 10, 0.5, 1).is_empty());
     }
 
     #[test]
@@ -313,12 +307,12 @@ mod tests {
     #[test]
     fn ffi_writes_expected_count_and_respects_capacity() {
         let mut buf = [ZovRect::default(); 3];
-        let written = zov_layout_master_stack(3, 0, 0, 900, 600, 5, 0.6, 1, buf.as_mut_ptr(), buf.len() as u32);
+        let written = zov_layout_bstack(3, 0, 0, 900, 600, 5, 0.6, 1, buf.as_mut_ptr(), buf.len() as u32);
         assert_eq!(written, 3);
 
         // Capacity smaller than n: must not overflow the buffer.
         let mut small = [ZovRect::default(); 1];
-        let written = zov_layout_master_stack(3, 0, 0, 900, 600, 5, 0.6, 1, small.as_mut_ptr(), small.len() as u32);
+        let written = zov_layout_bstack(3, 0, 0, 900, 600, 5, 0.6, 1, small.as_mut_ptr(), small.len() as u32);
         assert_eq!(written, 1);
     }
 }

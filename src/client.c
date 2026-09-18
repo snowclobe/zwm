@@ -118,8 +118,21 @@ manage(Window w)
 	XSelectInput(wm.dpy, w, EnterWindowMask | FocusChangeMask |
 	                         PropertyChangeMask | StructureNotifyMask);
 
-	c->next = wm.clients;
-	wm.clients = c;
+	/* Append rather than prepend: tiling order is list order, and slot 0
+	 * is always the master. Prepending would make every newly opened
+	 * window instantly become master, displacing whatever you were
+	 * already working in — appending joins the bottom of the stack
+	 * instead, leaving the existing layout undisturbed. The new window
+	 * still gets focus() below regardless of where it landed. */
+	c->next = NULL;
+	if (wm.clients) {
+		Client *last = wm.clients;
+		while (last->next)
+			last = last->next;
+		last->next = c;
+	} else {
+		wm.clients = c;
+	}
 
 	grabbuttons(c);
 	XMapWindow(wm.dpy, w);
@@ -417,4 +430,73 @@ resizemouse(const Arg *arg)
 	} while (ev.type != ButtonRelease);
 	XWarpPointer(wm.dpy, None, c->win, 0, 0, 0, 0, c->w - c->bw - 1, c->h - c->bw - 1);
 	XUngrabPointer(wm.dpy, CurrentTime);
+}
+
+#define CURSOR_STEP 20
+
+void
+movecursor(const Arg *arg)
+{
+	int dx = 0, dy = 0;
+
+	switch (arg->i) {
+	case 0: dx = -CURSOR_STEP; break; /* left */
+	case 1: dx = +CURSOR_STEP; break; /* right */
+	case 2: dy = -CURSOR_STEP; break; /* up */
+	case 3: dy = +CURSOR_STEP; break; /* down */
+	default: return;
+	}
+	XWarpPointer(wm.dpy, None, None, 0, 0, 0, 0, dx, dy);
+	XFlush(wm.dpy);
+}
+
+void
+moveclientdir(const Arg *arg)
+{
+	Client *best = NULL;
+	long bestdist = 0;
+	int fcx, fcy;
+
+	if (!wm.focused || wm.focused->floating)
+		return;
+	fcx = wm.focused->x + wm.focused->w / 2;
+	fcy = wm.focused->y + wm.focused->h / 2;
+
+	for (Client *c = wm.clients; c; c = c->next) {
+		if (c == wm.focused || c->workspace != wm.curws || c->floating)
+			continue;
+		int ccx = c->x + c->w / 2, ccy = c->y + c->h / 2;
+		int dx = ccx - fcx, dy = ccy - fcy;
+		int candidate;
+
+		switch (arg->i) {
+		case 0: candidate = dx < 0; break; /* left */
+		case 1: candidate = dx > 0; break; /* right */
+		case 2: candidate = dy < 0; break; /* up */
+		case 3: candidate = dy > 0; break; /* down */
+		default: return;
+		}
+		if (!candidate)
+			continue;
+
+		long dist = (long)dx * dx + (long)dy * dy;
+		if (!best || dist < bestdist) {
+			best = c;
+			bestdist = dist;
+		}
+	}
+	if (!best)
+		return;
+
+	/* Swap window identity between the two slots, like movestack — the
+	 * layout recomputes real geometry right after. */
+	Window tw = wm.focused->win;
+	int tf = wm.focused->floating;
+	wm.focused->win = best->win;
+	wm.focused->floating = best->floating;
+	best->win = tw;
+	best->floating = tf;
+	wm.focused = best;
+	arrange();
+	focus(wm.focused);
 }

@@ -118,6 +118,13 @@ display-менеджера: `sudo systemctl stop gdm3`):
 startx
 ```
 
+> **Arch**: сам `startx` — из пакета `xorg-xinit`, он не ставится вместе с
+> `base-devel`/`libx11` выше — а на совсем минимальной системе (где X11
+> вообще ещё нет) нужен ещё и `xorg-server`:
+> ```bash
+> sudo pacman -S xorg-xinit xorg-server
+> ```
+
 **Выбираемая сессия в GDM/LightDM/SDDM** — постоянная установка рядом со
 штатным окружением:
 
@@ -190,10 +197,13 @@ sudo install -Dm644 packaging/zovwm.desktop /usr/share/xsessions/zovwm.desktop
 | `Super+d`         | запустить `rofi -show drun`                 |
 | `Super+j` / `k`   | переключить фокус вперёд/назад по стеку     |
 | `Super+Shift+j/k` | переместить окно в стеке вперёд/назад       |
-| `Super+h` / `l`   | уменьшить/увеличить master-колонку          |
+| `Super+h` / `l`   | уменьшить/увеличить master-область (раскладка bstack) |
 | `Super+f`         | переключить floating для фокусного окна     |
-| `Super+t`         | раскладка tile (master-stack)               |
-| `Super+m`         | раскладка monocle (одно окно на весь экран) |
+| `Super+Left/Right/Up/Down` | подвинуть курсор мыши на 20px в эту сторону |
+| `Super+Shift+Left/Right/Up/Down` | поменять фокусное окно местами с ближайшим соседом в эту сторону |
+| `Super+t`         | раскладка fullscreen                        |
+| `Super+m`         | раскладка monocle                           |
+| `Super+b`         | раскладка bstack (дефолт)                   |
 | `Super+g`         | раскладка grid (сетка)                      |
 | `Super+Shift+q`   | закрыть фокусное окно                       |
 | `Super+1..9`      | переключиться на workspace 1..9             |
@@ -207,6 +217,24 @@ sudo install -Dm644 packaging/zovwm.desktop /usr/share/xsessions/zovwm.desktop
 
 Биндинги мыши (перемещение/ресайз floating-окон) пока не через визард/конфиг
 — это по-прежнему константы в `src/config.h` (`buttons[]`).
+
+## Раскладки
+
+Четыре раскладки, переключаются `Super+t/m/b/g`, символ каждой показан в
+баре; у каждого workspace — своя. `default_layout` в `zovwm.conf` задаёт,
+с какой раскладки стартует новый workspace (`bstack` по умолчанию —
+тайловый WM должен сразу показывать несколько окон одновременно).
+
+| Раскладка | Символ в баре | Описание |
+|-----------|---------------|-----------|
+| **bstack** | `[B]` | До `master_count` окон занимают строку сверху, высота — доля `master_ratio` от экрана (`Super+h`/`l` меняют долю); остальные делят строку снизу поровну. Дефолт — ближайший аналог классического dwm master-stack, только сверху/снизу вместо слева/справа. |
+| **fullscreen** | `[F]` | Фокусное окно занимает ВЕСЬ экран — без зазора, без видимой рамки, поднято даже над баром (настоящий fullscreen, а не «заполняет область под баром»). Остальные тайловые окна workspace никуда не делись, просто стоят друг под другом позади. |
+| **monocle** | `[M]` | Как fullscreen, но с учётом бара и `gap` — одно окно заполняет область workspace под баром, остальные стоят позади него. |
+| **grid** | `###` | Все тайловые окна раскладываются в ровную сетку `ceil(sqrt(n))` колонок (`compute_grid` из `rust/zovwm-layout`) — без разделения на master/stack. |
+
+Геометрия `bstack` и `grid` считается в Rust-крейте `zovwm-layout`
+(`rust/zovwm-layout/src/lib.rs`, покрыто юнит-тестами); `fullscreen` и
+`monocle` достаточно простые, чтобы считать их прямо в `src/layout.c`.
 
 ## Статус-бар
 
@@ -301,12 +329,14 @@ sudo install -Dm755 rust/target/release/zovwm-wallpaper /usr/local/bin/zovwm-wal
 
 ## Roadmap
 
-Реализовано (MVP): раскладки tile/monocle/grid (`Super+t/m/g`), фокус
-(клавиатура + hover), floating toggle, перемещение/ресайз floating окон
-мышью, 9 workspaces, запуск приложений (включая rofi), встроенный
-статус-бар с индикатором раскладки и системным треем, менеджер обоев
-(`Super+w`), меню питания (`Super+Shift+p`), runtime-конфиг хоткеев и
-внешнего вида с графическим визардом первого запуска и live hot-reload,
+Реализовано (MVP): раскладки fullscreen/monocle/bstack/grid
+(`Super+t/m/b/g`), фокус (клавиатура + hover), floating toggle,
+перемещение/ресайз floating окон мышью, directional swap окон и
+клавиатурное перемещение курсора (`Super+Shift+стрелки` /
+`Super+стрелки`), 9 workspaces, запуск приложений (включая rofi),
+встроенный статус-бар с индикатором раскладки и системным треем, менеджер
+обоев (`Super+w`), меню питания (`Super+Shift+p`), runtime-конфиг хоткеев
+и внешнего вида с графическим визардом первого запуска и live hot-reload,
 один монитор.
 
 Дальше:

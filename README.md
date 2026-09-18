@@ -118,6 +118,13 @@ service: `sudo systemctl stop gdm3`):
 startx
 ```
 
+> **Arch**: `startx` itself comes from `xorg-xinit`, not installed by
+> `base-devel`/`libx11` above — and on a genuinely minimal install (no X11
+> anything yet) you also need `xorg-server`:
+> ```bash
+> sudo pacman -S xorg-xinit xorg-server
+> ```
+
 **Selectable session in GDM/LightDM/SDDM** — a permanent install alongside
 your regular desktop environment:
 
@@ -191,10 +198,13 @@ above, or by editing `~/.config/zovwm/keys.conf` directly.
 | `Super+d`          | launch `rofi -show drun`                      |
 | `Super+j` / `k`    | move focus forward/backward through the stack |
 | `Super+Shift+j/k`  | move the window forward/backward in the stack |
-| `Super+h` / `l`    | shrink/grow the master column                 |
+| `Super+Left/Right/Up/Down` | move the mouse cursor 20px in that direction |
+| `Super+Shift+Left/Right/Up/Down` | swap the focused window with its nearest tiled neighbor in that direction |
+| `Super+h` / `l`    | shrink/grow the master area (bstack layout)   |
 | `Super+f`          | toggle floating for the focused window        |
-| `Super+t`          | tile layout (master-stack)                    |
-| `Super+m`          | monocle layout (one window fills the screen)  |
+| `Super+t`          | fullscreen layout                             |
+| `Super+m`          | monocle layout                                |
+| `Super+b`          | bstack layout (default)                       |
 | `Super+g`          | grid layout                                   |
 | `Super+Shift+q`    | close the focused window                      |
 | `Super+1..9`       | switch to workspace 1..9                      |
@@ -208,6 +218,24 @@ above, or by editing `~/.config/zovwm/keys.conf` directly.
 
 Mouse bindings (floating window move/resize) aren't wizard/config-file
 driven yet — they're still constants in `src/config.h` (`buttons[]`).
+
+## Layouts
+
+Four layouts, switched with `Super+t/m/b/g` and shown as a symbol in the
+bar; each workspace remembers its own. `default_layout` in `zovwm.conf`
+picks the one new workspaces start in (`bstack` by default — a tiling WM
+should show multiple windows at once out of the box).
+
+| Layout | Bar symbol | Description |
+|--------|------------|--------------|
+| **bstack** | `[B]` | Up to `master_count` windows form a row across the top, sized by `master_ratio` of the screen height (`Super+h`/`l` to adjust); the rest split evenly in a row below. The default — the closest analog to the classic dwm master-stack layout, just top/bottom instead of left/right. |
+| **fullscreen** | `[F]` | The focused window covers the *entire* screen — no gap, no border showing, and it's raised above the bar too (true fullscreen, not "fills the area below the bar"). Other tiled windows on the workspace are still there, just stacked underneath. |
+| **monocle** | `[M]` | Like fullscreen, but respects the bar and `gap` — one window fills the workspace area below the bar, others stacked behind it. |
+| **grid** | `###` | All tiled windows arranged in a `ceil(sqrt(n))`-column even grid (`rust/zovwm-layout`'s `compute_grid`) — no master/stack distinction. |
+
+`bstack` and `grid` geometry is computed in the Rust `zovwm-layout` crate
+(`rust/zovwm-layout/src/lib.rs`, unit-tested); `fullscreen` and `monocle`
+are simple enough to compute directly in `src/layout.c`.
 
 ## Status bar
 
@@ -303,12 +331,14 @@ manually via `Super+w`.
 
 ## Roadmap
 
-Done (MVP): tile/monocle/grid layouts (`Super+t/m/g`), focus (keyboard +
-hover), floating toggle, moving/resizing floating windows with the mouse,
-9 workspaces, launching apps (including rofi), a built-in status bar with
-a layout indicator and a system tray, a wallpaper manager (`Super+w`), a
-power menu (`Super+Shift+p`), runtime keybinding and appearance config
-with a first-run graphical wizard and live hot-reload, single monitor.
+Done (MVP): fullscreen/monocle/bstack/grid layouts (`Super+t/m/b/g`), focus
+(keyboard + hover), floating toggle, moving/resizing floating windows with
+the mouse, directional window swap and keyboard-driven cursor movement
+(`Super+Shift+arrows` / `Super+arrows`), 9 workspaces, launching apps
+(including rofi), a built-in status bar with a layout indicator and a
+system tray, a wallpaper manager (`Super+w`), a power menu
+(`Super+Shift+p`), runtime keybinding and appearance config with a
+first-run graphical wizard and live hot-reload, single monitor.
 
 Next:
 - Mouse-binding remapping (currently still compile-time `config.h`).

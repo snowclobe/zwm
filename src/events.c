@@ -95,6 +95,14 @@ configurerequest(XEvent *e)
 	XSync(wm.dpy, False);
 }
 
+/* Last EnterNotify's root coordinates, so a "the pointer didn't move, a
+ * window just got rearranged underneath it" enter (e.g. from a layout
+ * switch or a directional move swapping window positions) can be told
+ * apart from the cursor genuinely arriving somewhere new — the former
+ * would otherwise silently override whatever focus() an action just
+ * explicitly set, right after it ran. Same fix dwm and friends use. */
+static int lastenterx = -1, lastentery = -1;
+
 static void
 enternotify(XEvent *e)
 {
@@ -103,6 +111,10 @@ enternotify(XEvent *e)
 
 	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != wm.root)
 		return;
+	if (ev->x_root == lastenterx && ev->y_root == lastentery)
+		return;
+	lastenterx = ev->x_root;
+	lastentery = ev->y_root;
 	c = wintoclient(ev->window);
 	if (c)
 		focus(c);

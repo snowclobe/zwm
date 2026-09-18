@@ -25,7 +25,9 @@ setdefaults(void)
 	cfg.bar_height = 20;
 	cfg.master_count = 1;
 	cfg.master_ratio = 0.55;
-	cfg.default_layout = LAYOUT_TILE;
+	/* bstack, not fullscreen: a tiling WM should show multiple windows at
+	 * once by default. Fullscreen (Super+t) is an explicit opt-in. */
+	cfg.default_layout = LAYOUT_BSTACK;
 	snprintf(cfg.color_focus, sizeof cfg.color_focus, "#5e81ac");
 	snprintf(cfg.color_unfocus, sizeof cfg.color_unfocus, "#3b4252");
 	snprintf(cfg.bar_font, sizeof cfg.bar_font, "fixed");
@@ -48,10 +50,12 @@ configpath(void)
 static LayoutType
 parselayout(const char *s, LayoutType fallback)
 {
-	if (strcmp(s, "tile") == 0)
-		return LAYOUT_TILE;
+	if (strcmp(s, "fullscreen") == 0)
+		return LAYOUT_FULLSCREEN;
 	if (strcmp(s, "monocle") == 0)
 		return LAYOUT_MONOCLE;
+	if (strcmp(s, "bstack") == 0)
+		return LAYOUT_BSTACK;
 	if (strcmp(s, "grid") == 0)
 		return LAYOUT_GRID;
 	return fallback;
@@ -61,10 +65,11 @@ static const char *
 layoutname(LayoutType l)
 {
 	switch (l) {
-	case LAYOUT_MONOCLE: return "monocle";
-	case LAYOUT_GRID:    return "grid";
-	case LAYOUT_TILE:
-	default:              return "tile";
+	case LAYOUT_FULLSCREEN: return "fullscreen";
+	case LAYOUT_MONOCLE:    return "monocle";
+	case LAYOUT_GRID:       return "grid";
+	case LAYOUT_BSTACK:
+	default:                 return "bstack";
 	}
 }
 

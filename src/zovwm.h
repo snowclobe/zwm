@@ -53,9 +53,10 @@ struct Client {
 };
 
 typedef enum {
-	LAYOUT_TILE,    /* dwm-style master-stack */
-	LAYOUT_MONOCLE, /* one window fills the area, others stacked behind */
-	LAYOUT_GRID,    /* monsterwm/frankenwm-style even grid */
+	LAYOUT_FULLSCREEN, /* focused window covers the entire screen, even the bar */
+	LAYOUT_MONOCLE,    /* one window fills the area below the bar, others stacked behind */
+	LAYOUT_BSTACK,     /* master row on top, stack row below */
+	LAYOUT_GRID,       /* monsterwm/frankenwm-style even grid */
 	LAYOUT_COUNT
 } LayoutType;
 
@@ -122,6 +123,8 @@ void tag(const Arg *arg);
 void movemouse(const Arg *arg);
 void resizemouse(const Arg *arg);
 void refreshclients(void); /* reapplies cfg.border_width/color_* to every client, for hot-reload */
+void movecursor(const Arg *arg);   /* arg.i: 0=left 1=right 2=up 3=down */
+void moveclientdir(const Arg *arg); /* arg.i: 0=left 1=right 2=up 3=down; swaps focused with its nearest tiled neighbor in that direction */
 
 /* layout.c */
 void arrange(void);
