@@ -12,6 +12,10 @@
 
 WM wm;
 
+/* Fetches a random wallpaper from Wallhaven's open API and sets it (see
+ * rust/zovwm-wallpaper). Spawned once, unconditionally, below in setup(). */
+static const char *wallpapercmd[] = { "zovwm-wallpaper", NULL };
+
 void
 die(const char *msg)
 {
@@ -106,6 +110,16 @@ setup(void)
 	XDefineCursor(wm.dpy, wm.root, wm.cursor_normal);
 
 	signal(SIGCHLD, SIG_IGN);
+
+	if (keyconf_load() != 0) {
+		/* No ~/.config/zovwm/keys.conf yet: first run. Show the
+		 * compiled-in defaults in the wizard, let the user remap
+		 * anything, then persist whatever they end up with (defaults
+		 * or edits) so this only ever happens once. */
+		keyconf_seed_defaults();
+		wizard_run();
+	}
+	keyconf_build_keys();
 
 	grabkeys();
 	bar_init();

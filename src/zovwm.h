@@ -77,6 +77,8 @@ typedef struct {
 	int running;
 	Atom wm_protocols, wm_delete_window;
 	Cursor cursor_normal;
+	Key *keys;             /* loaded from ~/.config/zovwm/keys.conf */
+	int nkeys;
 } WM;
 
 extern WM wm;
@@ -116,6 +118,19 @@ int xerrorstart(Display *dpy, XErrorEvent *ee);
 
 /* keys.c */
 void grabkeys(void);
+
+/* keyconf.c */
+int keyconf_load(void);          /* 0 = loaded existing file, -1 = no file yet */
+void keyconf_seed_defaults(void); /* fills the in-memory bind list from compiled-in defaults */
+void keyconf_build_keys(void);    /* (re)builds wm.keys/wm.nkeys from the in-memory bind list */
+void keyconf_save(void);          /* writes the in-memory bind list to ~/.config/zovwm/keys.conf */
+int keyconf_count(void);
+const char *keyconf_combo(int i);
+const char *keyconf_label(int i);
+void keyconf_set_combo(int i, const char *combo);
+
+/* wizard.c */
+void wizard_run(void);
 
 /* main.c */
 void spawn(const Arg *arg);

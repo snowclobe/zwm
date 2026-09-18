@@ -11,8 +11,7 @@ keybindings.
 
 ### 1. Dependencies
 
-- Xlib (headers and library): Debian/Ubuntu — `libx11-dev`, Arch —
-  `libx11`, Fedora — `libX11-devel`.
+- Xlib (headers and library).
 - `pkg-config`.
 - A C11-capable compiler (gcc/clang).
 - Rust toolchain (`rustc`/`cargo`).
@@ -27,12 +26,31 @@ sudo apt install build-essential libx11-dev pkg-config
 sudo pacman -S base-devel libx11 pkgconf
 ```
 
+```bash
+# Fedora
+sudo dnf install gcc make pkgconf-pkg-config libX11-devel
+```
+
+```bash
+# openSUSE
+sudo zypper install gcc make pkgconf-pkg-config libX11-devel
+```
+
 If you don't have `cargo`/`rustc` yet:
 
 ```bash
 curl https://sh.rustup.rs -sSf | sh
 source "$HOME/.cargo/env"
 ```
+
+**Portability**: the C core and both Rust crates are plain C11 + Xlib +
+POSIX and stable-channel Rust — there's no architecture- or distro-specific
+code anywhere (no `#ifdef __aarch64__`, no hardcoded paths beyond the
+standard FHS ones like `/usr/local/bin` and `~/.config`). `make` on x86_64
+follows the exact same steps as above; the build has only actually been
+*run and tested* on arm64 Debian so far (that's the only machine available
+while developing it), so if you build on x86_64 or another distro, a
+`make && make test` sanity check is worth doing once.
 
 ### 2. Build
 
@@ -117,9 +135,29 @@ usual session.
 > (via Homebrew's `libx11`), but an actual interactive WM run needs to be
 > tested on Linux with an Xorg session (or via XQuartz+Xephyr).
 
-## Keybindings (MVP)
+## First-run setup wizard
 
-Default modifier is `Super` (Mod4). Change it in [`src/config.h`](src/config.h).
+Keybindings are no longer compile-time only. The first time `zovwm` runs
+with no `~/.config/zovwm/keys.conf` yet, it opens a small graphical wizard
+(own Xlib window, same bare-font drawing as the status bar — see
+`src/wizard.c`) listing every default bind. `Up`/`Down` (or `j`/`k`)
+selects a row, `Enter` waits for you to press a replacement key
+combination (`Esc` cancels just that one rebind), `S` saves and continues,
+`Esc` at the top level keeps the defaults and continues. Either way a
+`keys.conf` gets written, so the wizard only ever appears once — delete
+that file to see it again on the next login.
+
+The file itself is plain text, one bind per line
+(`Mod+Mod+Key action [arg]`, see `src/keyconf.c` for the full action list),
+so it's just as easy to hand-edit afterwards as it was to compile-edit
+`config.h` before.
+
+## Keybindings (defaults)
+
+Default modifier is `Super` (Mod4); change it in
+[`src/config.h`](src/config.h) (`MODKEY`). The bindings below are the
+defaults `keys.conf` is seeded with — remap any of them in the wizard
+above, or by editing `~/.config/zovwm/keys.conf` directly.
 
 | Key                | Action                                       |
 |--------------------|-----------------------------------------------|
@@ -141,10 +179,11 @@ Default modifier is `Super` (Mod4). Change it in [`src/config.h`](src/config.h).
 | `Super`+drag RMB   | resize a floating window                      |
 | `Super+w`          | fetch and set a new random wallpaper          |
 
-Launch commands (terminal, launcher), border colors, the gap between
-windows (`GAP`), and the keybinding/mouse-binding tables themselves are
-constants in `src/config.h`; a real config file is a later milestone (see
-roadmap).
+Mouse bindings (floating window move/resize) aren't wizard/config-file
+driven yet — they're still constants in `src/config.h` (`buttons[]`).
+Appearance (border colors, `GAP`, bar colors/font) is also still
+compile-time in `config.h`; a full appearance config file is a later
+milestone (see roadmap).
 
 ## Status bar
 
@@ -192,9 +231,11 @@ manually via `Super+w`.
 ## Architecture
 
 - `src/` — the C core: the X11 event loop (`main.c`, `events.c`), client
-  and focus management (`client.c`), keybinding dispatch (`keys.c`),
-  layouts and switching between them (`layout.c`), the status bar
-  (`bar.c`).
+  and focus management (`client.c`), keybinding grabbing/dispatch
+  (`keys.c`), layouts and switching between them (`layout.c`), the status
+  bar (`bar.c`), the runtime keybinding config — action registry,
+  defaults, `keys.conf` load/save (`keyconf.c`) — and the first-run wizard
+  (`wizard.c`).
 - `rust/zovwm-layout/` — pure layout geometry (master-stack and grid;
   monocle is a trivial case computed directly in C), no X11, no side
   effects, built as a static library and called from `layout.c` over FFI
@@ -207,11 +248,12 @@ manually via `Super+w`.
 Done (MVP): tile/monocle/grid layouts (`Super+t/m/g`), focus (keyboard +
 hover), floating toggle, moving/resizing floating windows with the mouse,
 9 workspaces, launching apps (including rofi), a built-in status bar with
-a layout indicator, a wallpaper manager (`Super+w`), single monitor.
+a layout indicator, a wallpaper manager (`Super+w`), a runtime, remappable
+keybinding config with a first-run graphical wizard, single monitor.
 
 Next:
-- A Rust (TOML) config file instead of the static `config.h`, reloadable
-  on a signal.
+- A full appearance config file (colors, gaps, bar font/height — currently
+  still compile-time `config.h`), and mouse-binding remapping.
 - An IPC socket for external control (`i3-msg`-style).
 - An unbounded-canvas movement mode — an idea borrowed from driftwm:
   floating windows live on a large virtual canvas, and a hotkey switches

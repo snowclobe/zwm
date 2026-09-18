@@ -109,11 +109,11 @@ keypress(XEvent *e)
 	XKeyEvent *ev = &e->xkey;
 	KeySym keysym = XkbKeycodeToKeysym(wm.dpy, (KeyCode)ev->keycode, 0, 0);
 
-	for (unsigned int i = 0; i < LENGTH(keys); i++)
-		if (keysym == keys[i].keysym &&
-		    CLEANMASK(keys[i].mod) == CLEANMASK(ev->state) &&
-		    keys[i].func)
-			keys[i].func(&keys[i].arg);
+	for (int i = 0; i < wm.nkeys; i++)
+		if (keysym == wm.keys[i].keysym &&
+		    CLEANMASK(wm.keys[i].mod) == CLEANMASK(ev->state) &&
+		    wm.keys[i].func)
+			wm.keys[i].func(&wm.keys[i].arg);
 }
 
 static void
