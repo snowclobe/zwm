@@ -155,7 +155,10 @@ void keyconf_save(void);          /* writes the in-memory bind list to ~/.config
 int keyconf_count(void);
 const char *keyconf_combo(int i);
 const char *keyconf_label(int i);
+const char *keyconf_action(int i);
+const char *keyconf_arg(int i); /* "" if the bind's action takes no argument */
 void keyconf_set_combo(int i, const char *combo);
+void keyconf_print_actions(void); /* prints every known action + syntax, for `zovwm --list-keys` */
 
 /* wizard.c */
 void wizard_run(void);

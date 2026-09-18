@@ -1,0 +1,48 @@
+# zovwm.conf — reference / example for the runtime appearance config.
+#
+# The real file lives at ~/.config/zovwm/zovwm.conf and is written out
+# with these same defaults the first time zovwm runs. This copy exists to
+# read through or copy from; editing it directly does nothing — only
+# ~/.config/zovwm/zovwm.conf is read.
+#
+# Format: one "key value" pair per line, blank lines and '#' comments
+# ignored. Unknown keys are ignored too (forward-compatible with older
+# files after a field is added/removed). Edits apply live: hit
+# Super+Shift+r, or just save the file.
+
+# Gap (px) left between tiled windows and around the screen edge in the
+# bstack layout.
+gap 8
+
+# Border width (px) drawn around every window.
+border_width 2
+
+# Status bar height (px).
+bar_height 20
+
+# bstack layout: how many windows sit in the master row, and what
+# fraction of the screen height that row gets (0.0-1.0). Super+h/l adjust
+# master_ratio live; this is just the starting value.
+master_count 1
+master_ratio 0.55
+
+# Layout new workspaces start in: fullscreen, monocle, bstack, or grid.
+# See the "Layouts" section of the README for what each one does.
+default_layout bstack
+
+# Border color of the focused / unfocused window ("#rrggbb", or any name
+# XAllocNamedColor() accepts, e.g. "steelblue").
+color_focus #5e81ac
+color_unfocus #3b4252
+
+# Status bar font — an X core font name/alias (no Xft/Pango). "fixed" is
+# guaranteed to exist on any X server; run `xlsfonts` for more choices.
+bar_font fixed
+
+# Status bar colors: background, text, current-workspace highlight,
+# occupied-workspace indicator, empty-workspace indicator.
+bar_color_bg #2e3440
+bar_color_fg #d8dee9
+bar_color_cur #88c0d0
+bar_color_occupied #a3be8c
+bar_color_empty #4c566a

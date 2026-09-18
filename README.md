@@ -220,6 +220,8 @@ or saving `monitor.conf` by hand). Delete `monitor.conf` to see the wizard
 again on the next login. If RandR isn't available, or an output reports no
 modes (as can happen under a plain Xvfb test display), the wizard silently
 does nothing rather than blocking startup.
+[`examples/monitor.conf.example`](examples/monitor.conf.example) explains
+the format if you'd rather hand-write it than run the wizard.
 
 ## Appearance config and hot-reload
 
@@ -231,7 +233,9 @@ does nothing rather than blocking startup.
 written out with the current defaults on first run, same as `keys.conf`.
 `src/appconf.c` owns loading/parsing it into the global `cfg` (declared in
 `zovwm.h`), which every file that used to read `config.h`'s constants
-reads from instead.
+reads from instead. [`examples/zovwm.conf.example`](examples/zovwm.conf.example)
+is an annotated copy of every key it understands, to read through or copy
+values out of.
 
 **All three** config files (including `monitor.conf`, see above) apply
 without restarting zovwm:
@@ -286,6 +290,33 @@ above, or by editing `~/.config/zovwm/keys.conf` directly.
 
 Mouse bindings (floating window move/resize) aren't wizard/config-file
 driven yet — they're still constants in `src/config.h` (`buttons[]`).
+
+### Seeing every available action, and extending your own config
+
+The table above is only the defaults — `keys.conf` accepts more actions
+than that, and `Mod+Mod+Key action [arg...]` is a plain text format, so
+adding your own binds later is just appending lines and reloading:
+
+```bash
+zovwm --list-keys
+```
+
+Prints every action `keys.conf` understands (with its argument syntax and
+a one-line description) plus, if `~/.config/zovwm/keys.conf` already
+exists, exactly what's currently bound — the same combo/action/arg
+triples the file itself uses, so it doubles as "what do I already have"
+and "what else can I bind." Needs no running X session (it just reads the
+file and prints — same for `zovwm --help`).
+
+[`examples/keys.conf.example`](examples/keys.conf.example) is the same
+reference as an annotated file you can read through or copy lines out of
+(and [`examples/zovwm.conf.example`](examples/zovwm.conf.example) /
+[`examples/monitor.conf.example`](examples/monitor.conf.example) for the
+other two config files). To add a bind: pick an unused `Mod+Mod+Key`
+combo, one of the action names `--list-keys` printed, and an argument if
+that action takes one — e.g. add `Super+e spawn thunar` as its own line in
+`~/.config/zovwm/keys.conf` to launch a file manager. No restart needed:
+`Super+Shift+r`, or just save the file, applies it within about a second.
 
 ## Layouts
 
@@ -400,6 +431,9 @@ manually via `Super+w`.
   the wallpaper manager — see the section above.
 - `dotfiles/` — an optional `.xinitrc`/`.Xresources`/auto-`startx` install
   script, see [Dotfiles](#dotfiles) above.
+- `examples/` — annotated reference copies of all three config files
+  (`keys.conf.example`, `zovwm.conf.example`, `monitor.conf.example`); see
+  also `zovwm --list-keys`.
 
 ## Roadmap
 
@@ -411,8 +445,9 @@ the mouse, directional window swap and keyboard-driven cursor movement
 system tray, a wallpaper manager (`Super+w`), a power menu
 (`Super+Shift+p`), runtime keybinding/appearance/monitor config with
 first-run graphical wizards and live hot-reload (including per-output
-resolution and refresh-rate selection via RandR), an optional dotfiles
-installer.
+resolution and refresh-rate selection via RandR), a `--list-keys`
+reference for every bindable action plus annotated example config files,
+an optional dotfiles installer.
 
 Next:
 - Mouse-binding remapping (currently still compile-time `config.h`).

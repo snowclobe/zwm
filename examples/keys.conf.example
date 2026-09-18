@@ -1,0 +1,80 @@
+# zovwm keys.conf — reference / example.
+#
+# The real file lives at ~/.config/zovwm/keys.conf and is created
+# automatically the first time zovwm runs (via the first-run wizard).
+# This copy is annotated to read through or copy lines out of; dropping it
+# in as-is works too (it's exactly the compiled-in defaults), but editing
+# this file directly does nothing — only ~/.config/zovwm/keys.conf is read.
+#
+# Run `zovwm --list-keys` any time for the same action reference plus
+# whatever's already in your own keys.conf, without opening this file.
+#
+# Format: one bind per line, blank lines and '#' comments ignored.
+#
+#   Mod+Mod+Key action [arg...]
+#
+# Modifiers: Super, Shift, Ctrl, Alt — combine with '+', e.g.
+# "Super+Shift+j". Key is any name XStringToKeysym() accepts (X11 keysym
+# names — letters/digits as themselves, plus names like "Return", "Left",
+# "F1", "Tab", "space"...). Edits apply live: hit Super+Shift+r, or just
+# save the file (zovwm watches ~/.config/zovwm/ and reloads automatically
+# within about a second).
+
+# --- window/focus management ---
+Super+j            focus_next
+Super+k            focus_prev
+Super+Shift+j      move_next
+Super+Shift+k      move_prev
+Super+h            mfact_dec
+Super+l            mfact_inc
+Super+f            toggle_floating
+Super+Shift+q      kill
+
+# --- directional cursor/window movement ---
+Super+Left         cursor_left
+Super+Right        cursor_right
+Super+Up           cursor_up
+Super+Down         cursor_down
+Super+Shift+Left   move_left
+Super+Shift+Right  move_right
+Super+Shift+Up     move_up
+Super+Shift+Down   move_down
+
+# --- layouts ---
+Super+t            layout_fullscreen
+Super+m            layout_monocle
+Super+b            layout_bstack
+Super+g            layout_grid
+
+# --- workspaces: view/tag take a 1-9 workspace number as their argument.
+#     Only 1 and 2 are spelled out here to save space — in the real
+#     generated file all of Super+1..9 / Super+Shift+1..9 are present. ---
+Super+1            view 1
+Super+Shift+1      tag 1
+Super+2            view 2
+Super+Shift+2      tag 2
+
+# --- launching apps: "spawn" takes the rest of the line as argv, split on
+#     whitespace — no shell involved, so no quoting/pipes/env expansion. ---
+Super+Return       spawn xterm
+Super+p            spawn dmenu_run
+Super+d            spawn rofi -show drun
+Super+w            spawn zovwm-wallpaper
+
+# --- wm control ---
+Super+Shift+r      reload
+Super+Shift+p      power_menu
+Super+Shift+e      quit
+
+# --- adding your own binds: pick any Mod+Mod+Key combo not already used
+#     above, any action name from `zovwm --list-keys`, and (for
+#     spawn/view/tag) an argument. A few examples — uncomment or adapt: ---
+#
+# Bind a file manager:
+# Super+e              spawn thunar
+#
+# Give grid layout a second key, alongside Super+g:
+# Super+Shift+g        layout_grid
+#
+# Screen lock via an external tool:
+# Super+Ctrl+l         spawn slock

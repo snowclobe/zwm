@@ -41,36 +41,64 @@ typedef struct {
 	const char *name;
 	void (*func)(const Arg *arg);
 	ActionKind kind;
-	Arg fixedarg; /* used verbatim when kind == KIND_FIXED */
+	Arg fixedarg;      /* used verbatim when kind == KIND_FIXED */
+	const char *argsyntax; /* shown after the name in --list-keys, "" if none */
+	const char *desc;      /* one-line description for --list-keys */
 } ActionDef;
 
 static const ActionDef actions[] = {
-	{"spawn",            spawn,          KIND_SPAWN,     {0}},
-	{"focus_next",       focusstack,     KIND_FIXED,     {.i = +1}},
-	{"focus_prev",       focusstack,     KIND_FIXED,     {.i = -1}},
-	{"move_next",        movestack,      KIND_FIXED,     {.i = +1}},
-	{"move_prev",        movestack,      KIND_FIXED,     {.i = -1}},
-	{"mfact_inc",        setmfact,       KIND_FIXED,     {.f = +0.05f}},
-	{"mfact_dec",        setmfact,       KIND_FIXED,     {.f = -0.05f}},
-	{"toggle_floating",  togglefloating, KIND_FIXED,     {0}},
-	{"layout_fullscreen", setlayout,     KIND_FIXED,     {.i = LAYOUT_FULLSCREEN}},
-	{"layout_monocle",   setlayout,      KIND_FIXED,     {.i = LAYOUT_MONOCLE}},
-	{"layout_bstack",    setlayout,      KIND_FIXED,     {.i = LAYOUT_BSTACK}},
-	{"layout_grid",      setlayout,      KIND_FIXED,     {.i = LAYOUT_GRID}},
-	{"kill",             killclient,     KIND_FIXED,     {0}},
-	{"quit",             quit,           KIND_FIXED,     {0}},
-	{"reload",           reloadconfig,   KIND_FIXED,     {0}},
-	{"power_menu",       powermenu_run,  KIND_FIXED,     {0}},
-	{"cursor_left",      movecursor,     KIND_FIXED,     {.i = 0}},
-	{"cursor_right",     movecursor,     KIND_FIXED,     {.i = 1}},
-	{"cursor_up",        movecursor,     KIND_FIXED,     {.i = 2}},
-	{"cursor_down",      movecursor,     KIND_FIXED,     {.i = 3}},
-	{"move_left",        moveclientdir,  KIND_FIXED,     {.i = 0}},
-	{"move_right",       moveclientdir,  KIND_FIXED,     {.i = 1}},
-	{"move_up",          moveclientdir,  KIND_FIXED,     {.i = 2}},
-	{"move_down",        moveclientdir,  KIND_FIXED,     {.i = 3}},
-	{"view",             view,           KIND_WORKSPACE, {0}},
-	{"tag",              tag,            KIND_WORKSPACE, {0}},
+	{"spawn",            spawn,          KIND_SPAWN,     {0},
+	 "<command...>", "run an external command, e.g. \"spawn xterm\""},
+	{"focus_next",       focusstack,     KIND_FIXED,     {.i = +1},
+	 "", "focus the next window in the stack"},
+	{"focus_prev",       focusstack,     KIND_FIXED,     {.i = -1},
+	 "", "focus the previous window in the stack"},
+	{"move_next",        movestack,      KIND_FIXED,     {.i = +1},
+	 "", "move the focused window down the stack"},
+	{"move_prev",        movestack,      KIND_FIXED,     {.i = -1},
+	 "", "move the focused window up the stack"},
+	{"mfact_inc",        setmfact,       KIND_FIXED,     {.f = +0.05f},
+	 "", "grow the master area"},
+	{"mfact_dec",        setmfact,       KIND_FIXED,     {.f = -0.05f},
+	 "", "shrink the master area"},
+	{"toggle_floating",  togglefloating, KIND_FIXED,     {0},
+	 "", "toggle floating for the focused window"},
+	{"layout_fullscreen", setlayout,     KIND_FIXED,     {.i = LAYOUT_FULLSCREEN},
+	 "", "switch the current workspace to the fullscreen layout"},
+	{"layout_monocle",   setlayout,      KIND_FIXED,     {.i = LAYOUT_MONOCLE},
+	 "", "switch the current workspace to the monocle layout"},
+	{"layout_bstack",    setlayout,      KIND_FIXED,     {.i = LAYOUT_BSTACK},
+	 "", "switch the current workspace to the bstack layout"},
+	{"layout_grid",      setlayout,      KIND_FIXED,     {.i = LAYOUT_GRID},
+	 "", "switch the current workspace to the grid layout"},
+	{"kill",             killclient,     KIND_FIXED,     {0},
+	 "", "close the focused window"},
+	{"quit",             quit,           KIND_FIXED,     {0},
+	 "", "quit zovwm"},
+	{"reload",           reloadconfig,   KIND_FIXED,     {0},
+	 "", "reload keys.conf/zovwm.conf/monitor.conf without restarting"},
+	{"power_menu",       powermenu_run,  KIND_FIXED,     {0},
+	 "", "open the power menu (reboot/shutdown/sleep/logout)"},
+	{"cursor_left",      movecursor,     KIND_FIXED,     {.i = 0},
+	 "", "move the mouse cursor left"},
+	{"cursor_right",     movecursor,     KIND_FIXED,     {.i = 1},
+	 "", "move the mouse cursor right"},
+	{"cursor_up",        movecursor,     KIND_FIXED,     {.i = 2},
+	 "", "move the mouse cursor up"},
+	{"cursor_down",      movecursor,     KIND_FIXED,     {.i = 3},
+	 "", "move the mouse cursor down"},
+	{"move_left",        moveclientdir,  KIND_FIXED,     {.i = 0},
+	 "", "swap the focused window with its nearest left neighbor"},
+	{"move_right",       moveclientdir,  KIND_FIXED,     {.i = 1},
+	 "", "swap the focused window with its nearest right neighbor"},
+	{"move_up",          moveclientdir,  KIND_FIXED,     {.i = 2},
+	 "", "swap the focused window with its nearest upper neighbor"},
+	{"move_down",        moveclientdir,  KIND_FIXED,     {.i = 3},
+	 "", "swap the focused window with its nearest lower neighbor"},
+	{"view",             view,           KIND_WORKSPACE, {0},
+	 "<1-9>", "switch to workspace N"},
+	{"tag",              tag,            KIND_WORKSPACE, {0},
+	 "<1-9>", "move the focused window to workspace N"},
 };
 
 typedef struct {
@@ -352,8 +380,42 @@ keyconf_label(int i)
 	return entries[i].label[0] ? entries[i].label : entries[i].action;
 }
 
+const char *
+keyconf_action(int i)
+{
+	return entries[i].action;
+}
+
+const char *
+keyconf_arg(int i)
+{
+	return entries[i].arg;
+}
+
 void
 keyconf_set_combo(int i, const char *combo)
 {
 	snprintf(entries[i].combo, sizeof entries[i].combo, "%s", combo);
+}
+
+/* Prints every action keys.conf understands, for `zovwm --list-keys` (see
+ * main.c) — a standing reference for hand-editing/extending keys.conf
+ * beyond whatever the first-run wizard offered, without needing to read
+ * this file's source. See also examples/keys.conf.example. */
+void
+keyconf_print_actions(void)
+{
+	printf("Actions available in ~/.config/zovwm/keys.conf, one bind per line:\n");
+	printf("  Mod+Mod+Key action [arg...]\n\n");
+	printf("Modifiers: Super, Shift, Ctrl, Alt (combine with '+', e.g.\n");
+	printf("\"Super+Shift+j\"). Key is any name XStringToKeysym() accepts (an\n");
+	printf("X11 keysym name, e.g. \"Return\", \"Left\", \"F1\", \"j\").\n\n");
+	for (unsigned int i = 0; i < LENGTH(actions); i++) {
+		char namecol[48];
+		if (actions[i].argsyntax[0])
+			snprintf(namecol, sizeof namecol, "%s %s", actions[i].name, actions[i].argsyntax);
+		else
+			snprintf(namecol, sizeof namecol, "%s", actions[i].name);
+		printf("  %-26s %s\n", namecol, actions[i].desc);
+	}
 }

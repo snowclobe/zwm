@@ -244,12 +244,60 @@ handleconfigchange(void)
 }
 #endif
 
+static void
+printusage(void)
+{
+	printf("usage: zovwm [--list-keys] [--help]\n");
+	printf("  --list-keys   print every keybinding action (and your current\n");
+	printf("                binds, if configured yet), then exit\n");
+	printf("  --help, -h    print this message and exit\n");
+}
+
+/* `zovwm --list-keys`: a standing, no-X-needed reference for hand-editing
+ * ~/.config/zovwm/keys.conf — every action keys.conf understands, plus
+ * whatever's already bound, so extending your own config doesn't require
+ * re-running the first-run wizard or reading the source. See also
+ * examples/keys.conf.example. */
+static void
+listkeys(void)
+{
+	keyconf_print_actions();
+	printf("\n");
+	if (keyconf_load() == 0) {
+		printf("Your current binds (~/.config/zovwm/keys.conf):\n\n");
+		int n = keyconf_count();
+		for (int i = 0; i < n; i++) {
+			const char *arg = keyconf_arg(i);
+			if (arg[0])
+				printf("  %-20s %s %s\n", keyconf_combo(i), keyconf_action(i), arg);
+			else
+				printf("  %-20s %s\n", keyconf_combo(i), keyconf_action(i));
+		}
+	} else {
+		printf("No ~/.config/zovwm/keys.conf yet - it's created the first time zovwm runs.\n");
+	}
+}
+
 int
-main(void)
+main(int argc, char *argv[])
 {
 	XEvent ev;
 	int xfd;
 	time_t lastclock = 0;
+
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--list-keys") == 0) {
+			listkeys();
+			return 0;
+		}
+		if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+			printusage();
+			return 0;
+		}
+		fprintf(stderr, "zovwm: unknown option '%s'\n", argv[i]);
+		printusage();
+		return 1;
+	}
 
 	setup();
 	xfd = ConnectionNumber(wm.dpy);

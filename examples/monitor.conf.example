@@ -1,0 +1,24 @@
+# monitor.conf — reference / example for the runtime monitor config.
+#
+# The real file lives at ~/.config/zovwm/monitor.conf and is written by
+# the first-run monitor setup wizard (see the "Monitor setup wizard"
+# section of the README) — you normally never hand-write this file, but
+# it's plain text, so hand-editing works too. Editing this copy does
+# nothing; only ~/.config/zovwm/monitor.conf is read.
+#
+# Format: one output per line —
+#
+#   output mode rate
+#
+# "output" is the RandR output name (`xrandr` lists them, e.g. eDP-1,
+# HDMI-1, DP-2). "mode" is a resolution as WIDTHxHEIGHT. "rate" is the
+# refresh rate in Hz, rounded to the nearest whole number. Each line is
+# applied as `xrandr --output <output> --mode <mode> --rate <rate>` on
+# every zovwm startup, and again on reload (Super+Shift+r or saving the
+# file). Delete this file (the real one, in ~/.config/zovwm/) to see the
+# monitor wizard again on the next login.
+
+eDP-1 1920x1080 60
+
+# A second output, e.g. an external monitor plugged into a laptop:
+# HDMI-1 2560x1440 144
