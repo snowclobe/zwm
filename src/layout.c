@@ -39,10 +39,10 @@ arrange(void)
 
 	switch (wm.ws[wm.curws].layout) {
 	case LAYOUT_FULLSCREEN:
-		/* True fullscreen: covers the whole screen, including over
-		 * the bar (no gap, doesn't stop at cfg.bar_height). */
+		/* Fullscreen below the bar: fills the entire work area with no
+		 * gaps, but leaves the bar visible at the top. */
 		for (unsigned int i = 0; i < n; i++)
-			resizeclient(tiled[i], 0, 0, wm.sw, wm.sh);
+			resizeclient(tiled[i], 0, cfg.bar_height, wm.sw, wm.sh - cfg.bar_height);
 		raisefocused(tiled, n);
 		break;
 

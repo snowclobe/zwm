@@ -166,6 +166,14 @@ setup(void)
 		wm.sh = DisplayHeight(wm.dpy, wm.screen);
 	}
 
+	/* Restore keyboard layouts from a previous session before any
+	 * wizard touches the keyboard. If no saved config exists yet,
+	 * show the keyboard-layout wizard once (first run). */
+	if (kblayout_conf_exists())
+		kblayout_apply_saved();
+	else
+		kbwizard_run();
+
 	for (int i = 0; i < WSCOUNT; i++) {
 		wm.ws[i].master_ratio = cfg.master_ratio;
 		wm.ws[i].nmaster = cfg.master_count;
@@ -208,6 +216,7 @@ setup(void)
 		spawn(&wp);
 	}
 	scan();
+	autostart_run();
 }
 
 static void

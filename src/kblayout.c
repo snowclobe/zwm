@@ -14,8 +14,11 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <ctype.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <X11/Xatom.h>
 #include <X11/XKBlib.h>
 
@@ -126,4 +129,71 @@ kblayout_current(char *buf, size_t bufsz)
 	snprintf(buf, bufsz, "%s", layouts[group]);
 	for (char *c = buf; *c; c++)
 		*c = (char)toupper((unsigned char)*c);
+}
+
+static char *
+kblayout_configpath(void)
+{
+	static char path[512];
+	const char *home = getenv("HOME");
+	snprintf(path, sizeof path, "%s/.config/zovwm/kblayout.conf", home ? home : "/tmp");
+	return path;
+}
+
+int
+kblayout_conf_exists(void)
+{
+	FILE *f = fopen(kblayout_configpath(), "r");
+	if (f) {
+		fclose(f);
+		return 1;
+	}
+	return 0;
+}
+
+void
+kblayout_apply_saved(void)
+{
+	FILE *f = fopen(kblayout_configpath(), "r");
+	if (!f)
+		return;
+
+	char saved_layouts[128] = "";
+	char saved_toggle[64] = "";
+	char line[256];
+
+	while (fgets(line, sizeof line, f)) {
+		char *p = line;
+		while (isspace((unsigned char)*p))
+			p++;
+		if (*p == '#' || *p == '\0' || *p == '\n')
+			continue;
+
+		char key[32] = "", val[128] = "";
+		if (sscanf(p, "%31s %127s", key, val) == 2) {
+			if (strcmp(key, "layouts") == 0)
+				snprintf(saved_layouts, sizeof saved_layouts, "%s", val);
+			else if (strcmp(key, "toggle") == 0)
+				snprintf(saved_toggle, sizeof saved_toggle, "%s", val);
+		}
+	}
+	fclose(f);
+
+	if (saved_layouts[0] == '\0')
+		return;
+
+	/* Apply via setxkbmap */
+	char cmd[256];
+	if (saved_toggle[0])
+		snprintf(cmd, sizeof cmd, "setxkbmap -layout %s -option '' -option %s",
+		         saved_layouts, saved_toggle);
+	else
+		snprintf(cmd, sizeof cmd, "setxkbmap -layout %s", saved_layouts);
+
+	if (fork() == 0) {
+		setsid();
+		signal(SIGCHLD, SIG_DFL);
+		execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
+		_exit(1);
+	}
 }

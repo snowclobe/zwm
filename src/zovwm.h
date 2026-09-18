@@ -53,7 +53,7 @@ struct Client {
 };
 
 typedef enum {
-	LAYOUT_FULLSCREEN, /* focused window covers the entire screen, even the bar */
+	LAYOUT_FULLSCREEN, /* focused window fills the screen below the bar, no gaps */
 	LAYOUT_MONOCLE,    /* one window fills the area below the bar, others stacked behind */
 	LAYOUT_BSTACK,     /* master row on top, stack row below */
 	LAYOUT_GRID,       /* monsterwm/frankenwm-style even grid */
@@ -173,6 +173,8 @@ int monitorwizard_run(void); /* returns 1 if any output's mode changed (caller s
 /* kblayout.c */
 void kblayout_next(const Arg *arg); /* cycles to the next XKB layout group, if more than one is configured */
 void kblayout_current(char *buf, size_t bufsz); /* current layout's short code, uppercased, "" if none/unavailable */
+void kblayout_apply_saved(void); /* re-applies saved kblayout.conf via setxkbmap */
+int kblayout_conf_exists(void); /* returns 1 if ~/.config/zovwm/kblayout.conf exists */
 
 /* appconf.c */
 void appconf_load(void);   /* seeds cfg with defaults, then overrides from zovwm.conf; writes the file if missing */
@@ -185,6 +187,12 @@ void tray_handle_clientmessage(XEvent *ev);
 void tray_handle_unmap(Window w);
 void tray_handle_destroy(Window w);
 int tray_width(void);
+
+/* kbwizard.c */
+int kbwizard_run(void); /* first-run keyboard-layout wizard; returns 1 if layouts were configured */
+
+/* autostart.c */
+void autostart_run(void); /* reads ~/.config/zovwm/autostart.conf and spawns each command */
 
 /* powermenu.c */
 void powermenu_run(const Arg *arg);
