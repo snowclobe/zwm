@@ -1,7 +1,7 @@
 include config.mk
 
 BIN = zovwm
-SRC = src/main.c src/client.c src/layout.c src/events.c src/keys.c src/bar.c src/keyconf.c src/wizard.c src/appconf.c src/tray.c src/powermenu.c src/monitorconf.c src/monitorwizard.c
+SRC = src/main.c src/client.c src/layout.c src/events.c src/keys.c src/bar.c src/keyconf.c src/wizard.c src/appconf.c src/tray.c src/powermenu.c src/monitorconf.c src/monitorwizard.c src/kblayout.c
 OBJ = $(SRC:.c=.o)
 HDR = src/zovwm.h src/config.h src/zov_layout.h
 

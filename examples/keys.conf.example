@@ -66,6 +66,11 @@ Super+Shift+r      reload
 Super+Shift+p      power_menu
 Super+Shift+e      quit
 
+# --- keyboard layout: cycles through whatever setxkbmap already
+#     configured this session (e.g. "setxkbmap -layout us,ru" in
+#     .xinitrc — see dotfiles/). No-op with only one layout active. ---
+Super+space        kb_layout_next
+
 # --- adding your own binds: pick any Mod+Mod+Key combo not already used
 #     above, any action name from `zovwm --list-keys`, and (for
 #     spawn/view/tag) an argument. A few examples — uncomment or adapt: ---

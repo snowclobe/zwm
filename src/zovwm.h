@@ -170,6 +170,10 @@ void monitorconf_set(const char *output, const char *mode, const char *rate); /*
 /* monitorwizard.c */
 int monitorwizard_run(void); /* returns 1 if any output's mode changed (caller should reopen the display) */
 
+/* kblayout.c */
+void kblayout_next(const Arg *arg); /* cycles to the next XKB layout group, if more than one is configured */
+void kblayout_current(char *buf, size_t bufsz); /* current layout's short code, uppercased, "" if none/unavailable */
+
 /* appconf.c */
 void appconf_load(void);   /* seeds cfg with defaults, then overrides from zovwm.conf; writes the file if missing */
 void appconf_reload(void); /* re-reads zovwm.conf into cfg, for hot-reload; does not rewrite the file */

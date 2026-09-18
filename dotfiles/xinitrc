@@ -7,4 +7,13 @@
 
 [ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources"
 
+# Two keyboard layouts (English + Russian) for zovwm's Super+space to
+# cycle between (see "Keyboard layout switching" in the README).
+# grp:alt_shift_toggle is a fallback that works even without zovwm (also
+# native XKB group-switching actions like this one are the only thing
+# that make xkbcomp keep a second layout's symbols at all — omitting
+# -option entirely can silently compile down to just the first layout).
+# Edit or drop this line if you only need one layout.
+setxkbmap -layout us,ru -option grp:alt_shift_toggle
+
 exec zovwm

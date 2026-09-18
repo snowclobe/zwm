@@ -156,9 +156,11 @@ sh dotfiles/install.sh
 ```
 
 This installs:
-- `~/.xinitrc` — merges `~/.Xresources` with `xrdb`, then `exec zovwm`.
-  Nothing else is needed: zovwm fetches its own wallpaper and applies its
-  own saved monitor mode on startup.
+- `~/.xinitrc` — merges `~/.Xresources` with `xrdb`, sets up English +
+  Russian keyboard layouts (`setxkbmap -layout us,ru`, cycled with
+  `Super+space` — see [Keyboard layout switching](#keyboard-layout-switching)
+  below), then `exec zovwm`. Nothing else is needed: zovwm fetches its own
+  wallpaper and applies its own saved monitor mode on startup.
 - `~/.Xresources` — a small dark color scheme and font for `xterm` and
   other resource-aware apps (`Xcursor.theme`/`Xcursor.size` too).
 - A snippet appended to `~/.bash_profile` that runs `startx` automatically
@@ -287,6 +289,7 @@ above, or by editing `~/.config/zovwm/keys.conf` directly.
 | `Super+w`          | fetch and set a new random wallpaper          |
 | `Super+Shift+r`    | reload `keys.conf`/`zovwm.conf`               |
 | `Super+Shift+p`    | power menu (reboot/shutdown/sleep/logout)     |
+| `Super+space`      | switch to the next keyboard layout            |
 
 Mouse bindings (floating window move/resize) aren't wizard/config-file
 driven yet — they're still constants in `src/config.h` (`buttons[]`).
@@ -343,9 +346,40 @@ drawn with bare Xlib (`XDrawString` — no Xft/Pango, so non-Latin window
 titles, e.g. Cyrillic, may not render correctly with the default core font;
 workspace numbers and the clock are always fine). Shows: 9 workspace
 indicators (current one highlighted, occupied ones in a different color),
-the layout indicator, the focused window's title, docked tray icons, and a
-clock. Height, font, and colors come from `cfg` (see Appearance config
-above) and reload live along with everything else in it.
+the layout indicator, the focused window's title, docked tray icons, the
+current keyboard layout, and a clock. Height, font, and colors come from
+`cfg` (see Appearance config above) and reload live along with everything
+else in it.
+
+## Keyboard layout switching
+
+`Super+space` cycles to the next keyboard layout, and the bar shows which
+one is active (e.g. `US`/`RU`) just left of the clock. zovwm doesn't
+configure the layouts themselves — that's a session-level `setxkbmap
+-layout us,ru -option grp:alt_shift_toggle` (or however many layouts you
+want, comma-separated), typically run once from `.xinitrc` before `exec
+zovwm` (`dotfiles/xinitrc` does exactly this, for English+Russian — edit
+or drop that line to taste). The bind (`src/kblayout.c`) just locks the
+next XKB group via `XkbLockGroup`, and reads the current one back from the
+root window's `_XKB_RULES_NAMES` property (the same property `setxkbmap`
+writes) to show/cycle through — plain Xlib/XKB, no extra library beyond
+`libX11` itself. With zero or one layout configured, `Super+space` and the
+bar indicator are both quiet no-ops rather than showing anything
+misleading.
+
+> The `-option grp:...` isn't optional decoration: without *some* action
+> bound to switch groups, `xkbcomp` can compile a second layout as
+> unreachable and silently drop its symbols, leaving only the first
+> layout actually active server-side even though `setxkbmap` reports
+> success. `grp:alt_shift_toggle` fixes that and doubles as a
+> zovwm-independent fallback switch (Alt+Shift), so there's no downside
+> to keeping it even though `Super+space` is the primary bind. Verified
+> the RandR-style groundwork (property read/write, group-state queries,
+> graceful no-op with fewer than two layouts) directly; full live
+> switching between two real layouts wasn't reliably reproducible on this
+> project's headless Xvfb test VM specifically — its XKB support has
+> known multi-group flakiness — so give it a check on a real Xorg session
+> (`startx`, not `Xvfb`) after setting this up.
 
 ## System tray
 
@@ -421,8 +455,8 @@ manually via `Super+w`.
   (`powermenu.c`), the runtime keybinding config — action registry,
   defaults, `keys.conf` load/save (`keyconf.c`) — the runtime appearance
   config (`appconf.c`), the runtime monitor config (`monitorconf.c`) and
-  its first-run wizard (`monitorwizard.c`), and the keybinding first-run
-  wizard (`wizard.c`).
+  its first-run wizard (`monitorwizard.c`), keyboard layout switching
+  (`kblayout.c`), and the keybinding first-run wizard (`wizard.c`).
 - `rust/zovwm-layout/` — pure layout geometry (bstack and grid; fullscreen
   and monocle are trivial cases computed directly in C), no X11, no side
   effects, built as a static library and called from `layout.c` over FFI
@@ -445,9 +479,10 @@ the mouse, directional window swap and keyboard-driven cursor movement
 system tray, a wallpaper manager (`Super+w`), a power menu
 (`Super+Shift+p`), runtime keybinding/appearance/monitor config with
 first-run graphical wizards and live hot-reload (including per-output
-resolution and refresh-rate selection via RandR), a `--list-keys`
-reference for every bindable action plus annotated example config files,
-an optional dotfiles installer.
+resolution and refresh-rate selection via RandR), keyboard layout
+switching (`Super+space`, shown in the bar), a `--list-keys` reference for
+every bindable action plus annotated example config files, an optional
+dotfiles installer.
 
 Next:
 - Mouse-binding remapping (currently still compile-time `config.h`).

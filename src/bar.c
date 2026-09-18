@@ -14,7 +14,8 @@ static Window barwin;
 static GC gc;
 static XFontStruct *font;
 static unsigned long col_bg, col_fg, col_cur, col_occupied, col_empty;
-static int clockareaw; /* reserved width for the clock text; tray icons end just left of it */
+static int clockareaw;  /* reserved width for the clock text */
+static int kblareaw;    /* reserved width for the keyboard-layout code, just left of the clock; tray icons end left of both */
 
 static unsigned long
 getcolor(const char *name)
@@ -53,6 +54,7 @@ loadstyle(void)
 	col_empty    = getcolor(cfg.bar_color_empty);
 
 	clockareaw = XTextWidth(font, "00:00:00", 8) + 16;
+	kblareaw = XTextWidth(font, "WW", 2) + 16; /* worst-case 2-letter layout code */
 }
 
 void
@@ -104,7 +106,7 @@ bar_window(void)
 int
 bar_right_reserved(void)
 {
-	return clockareaw;
+	return clockareaw + kblareaw;
 }
 
 void
@@ -169,6 +171,13 @@ bar_draw(void)
 	int cw = XTextWidth(font, clockbuf, (int)strlen(clockbuf));
 	XSetForeground(wm.dpy, gc, col_fg);
 	XDrawString(wm.dpy, barwin, gc, wm.sw - cw - 8, ty, clockbuf, (int)strlen(clockbuf));
+
+	char kblabel[8];
+	kblayout_current(kblabel, sizeof kblabel);
+	if (kblabel[0]) {
+		int kw = XTextWidth(font, kblabel, (int)strlen(kblabel));
+		XDrawString(wm.dpy, barwin, gc, wm.sw - clockareaw - kw - 8, ty, kblabel, (int)strlen(kblabel));
+	}
 
 	XFlush(wm.dpy);
 }

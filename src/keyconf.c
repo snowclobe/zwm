@@ -99,6 +99,8 @@ static const ActionDef actions[] = {
 	 "<1-9>", "switch to workspace N"},
 	{"tag",              tag,            KIND_WORKSPACE, {0},
 	 "<1-9>", "move the focused window to workspace N"},
+	{"kb_layout_next",   kblayout_next,  KIND_FIXED,     {0},
+	 "", "switch to the next configured keyboard layout (setxkbmap -layout, e.g. us,ru)"},
 };
 
 typedef struct {
@@ -144,6 +146,7 @@ static const struct {
 	{"Super+Shift+Right", "move_right",      "",                   "Swap window with right neighbor"},
 	{"Super+Shift+Up",    "move_up",         "",                   "Swap window with upper neighbor"},
 	{"Super+Shift+Down",  "move_down",       "",                   "Swap window with lower neighbor"},
+	{"Super+space",       "kb_layout_next",  "",                   "Next keyboard layout"},
 };
 
 static const ActionDef *
