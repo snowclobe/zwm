@@ -253,12 +253,14 @@ save_and_apply(void)
 		fclose(f);
 	}
 
-	/* Apply immediately via setxkbmap */
-	char cmd[256];
-	snprintf(cmd, sizeof cmd, "setxkbmap -layout %s -option '' -option %s", layouts, toggle);
+	/* Apply immediately via setxkbmap — execlp with a split argv rather
+	 * than a shell string, matching kblayout_apply_saved()'s reasoning
+	 * (kblayout.c) even though layouts/toggle are compile-time constants
+	 * here, not file-sourced. */
 	if (fork() == 0) {
 		setsid();
-		execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
+		execlp("setxkbmap", "setxkbmap", "-layout", layouts,
+		       "-option", "", "-option", toggle, (char *)NULL);
 		_exit(1);
 	}
 }

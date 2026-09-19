@@ -182,18 +182,19 @@ kblayout_apply_saved(void)
 	if (saved_layouts[0] == '\0')
 		return;
 
-	/* Apply via setxkbmap */
-	char cmd[256];
-	if (saved_toggle[0])
-		snprintf(cmd, sizeof cmd, "setxkbmap -layout %s -option '' -option %s",
-		         saved_layouts, saved_toggle);
-	else
-		snprintf(cmd, sizeof cmd, "setxkbmap -layout %s", saved_layouts);
-
+	/* execlp with a split argv, not a shell string: saved_layouts/
+	 * saved_toggle come straight from a hand-editable config file, and
+	 * sscanf's %s only stops at whitespace, not at ';'/'$()'/backticks —
+	 * routing that through `sh -c` would let a crafted kblayout.conf run
+	 * arbitrary shell commands. */
 	if (fork() == 0) {
 		setsid();
 		signal(SIGCHLD, SIG_DFL);
-		execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
+		if (saved_toggle[0])
+			execlp("setxkbmap", "setxkbmap", "-layout", saved_layouts,
+			       "-option", "", "-option", saved_toggle, (char *)NULL);
+		else
+			execlp("setxkbmap", "setxkbmap", "-layout", saved_layouts, (char *)NULL);
 		_exit(1);
 	}
 }
